@@ -9,11 +9,24 @@ import '../providers/scanner_provider.dart';
 import '../../triage/providers/triage_provider.dart';
 import '../../../core/utils/connectivity_service.dart';
 
-class ScanScreen extends ConsumerWidget {
+class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
+}
+
+class _ScanScreenState extends ConsumerState<ScanScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(scannerProvider.notifier).clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(scannerProvider);
     final connectivity = ref.watch(connectivityProvider).value;
 
@@ -185,19 +198,42 @@ class ScanScreen extends ConsumerWidget {
                   ],
                 ),
                 
-                const SizedBox(height: 12),
-                
-                TextButton(
-                  onPressed: () {
-                    ref.read(triageProvider.notifier).submitFailSafe();
-                    context.pushReplacement('/triage-result');
-                  },
-                  child: const Text(
-                    'ছবি নেই? সরাসরি ম্যাপ ও জরুরি সাহায্য',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      decoration: TextDecoration.underline,
-                    ),
+                const SizedBox(height: 16),
+
+                // Section for when user doesn't have a snake image
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'আমার কাছে সাপের ছবি নেই',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => context.pushReplacement('/bite-assessment'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          minimumSize: const Size.fromHeight(40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'কামড়ের স্থান ও লক্ষণ মূল্যায়ন করুন',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -66,18 +66,6 @@ Audio Guide System ]      [ Anti-Venom GPS Radar ]     [ Hospital Pre-Alert Ping
 (Opus/AAC Audio Rules)     (Geolocator + Offline DB)     (REST API / 999 Payload)
 
 
-| উপাদান (Component) | ব্যবহৃত প্রযুক্তি (Technology Used) |
-| :--- | :--- |
-| **Mobile Framework** | **React Native (Expo)** / **Flutter** |
-| **Cloud AI (MVP)** | **OpenRouter API** (`google/gemini-flash-1.5`, `qwen/qwen-2-vl-72b-instruct`) |
-| **Offline Edge AI (Target)** | **YOLOv8-Nano / MobileNetV3** (INT8 Quantized `.tflite` format) |
-| **State Management & Async** | Redux Toolkit / React Query / Provider |
-| **Location & Maps** | `expo-location`, `react-native-maps` / `flutter_map` |
-| **Audio Engine** | `expo-av` / `audioplayers` (Opus compressed audio) |
-| **Local Offline DB** | SQLite / Hive / WatermelonDB |
-
----
-
 ## 🔒 ডেটা সিকিউরিটি ও অপব্যবহার রোধ (Security & Threat Mitigation)
 
 লাইভ ইনভেন্টরি প্রকাশ করলে অ্যান্টি-ভেনম চুরি বা বেআইনি কালোবাজারির ঝুঁকি থাকে। তা রোধে ৩টি সিকিউরিটি লেয়ার ব্যবহার করা হয়েছে:
@@ -85,29 +73,6 @@ Audio Guide System ]      [ Anti-Venom GPS Radar ]     [ Hospital Pre-Alert Ping
 1. **Data Masking (Public View):** সাধারণ ব্যবহারকারী সুনির্দিষ্ট সংখ্যা (যেমন: *"১৫টি ভায়াল আছে"*) দেখতে পাবেন না, কেবল প্রাপ্যতা স্ট্যাটাস (In Stock / Out of Stock) দেখতে পাবেন।
 2. **Role-Based Access Control (RBAC):** সুনির্দিষ্ট সংখ্যা এবং ব্যাচ নম্বর দেখতে কেবল ভেরিফায়েড সরকারি ডাক্তার, হাসপাতাল এডমিন ও ৯৯৯ অপারেটররা সিকিউর পিন/লগইন ব্যবহার করবেন।
 3. **Geo-Fencing & Rate Limiting:** একজন ইউজার কেবল তার বর্তমান জিপিএস লোকেশনের আশেপাশের (৩০-৫০ কিমি) হাসপাতালের ডেটা একসেস করতে পারবেন। বাল্ক ডেটা স্ক্র্যাপিং বন্ধে ব্যাকএন্ডে এপিআই রেট লিমিটিং থাকবে।
-
----
-
-## 📦 প্রজেক্ট ফাইল স্ট্রাকচার (Project Directory)
-VenomShield/
-├── assets/
-├── audio/                   # Pre-recorded Bangla human audio files (.opus)
-│   ├── panic_control.opus
-│   ├── tourniquet_warning.opus
-│   └── do_not_cut.opus
-├── models/                  # Offline TFLite models
-│   └── venomshield_yolov8n_int8.tflite
-src/
-├── api/                     # OpenRouter API & Hospital endpoints
-│   ├── openrouterClient.js
-│   └── hospitalApi.js
-├── components/              # UI Components (Scanner, Radar Map, Audio Player)
-├── database/                # Local SQLite/Hive database for hospitals
-├── services/                # Abstract AI Service (Swappable Cloud/Offline)
-│   ├── AiServiceAdapter.js
-│   ├── OpenRouterService.js
-│   └── LocalTFLiteService.js
-└── screens/                 # HomeScreen, ScanScreen, HospitalRadarScreen, TriageScreen
 
 ---
 

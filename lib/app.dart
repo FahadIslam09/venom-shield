@@ -6,6 +6,8 @@ import 'features/scanner/screens/scan_screen.dart';
 import 'features/triage/screens/symptom_checklist_screen.dart';
 import 'features/triage/screens/triage_result_screen.dart';
 import 'features/hospital/screens/hospital_radar_screen.dart';
+import 'features/bite_assessment/screens/bite_assessment_screen.dart';
+import 'features/bite_assessment/screens/bite_assessment_result_screen.dart';
 
 class VenomShieldApp extends StatelessWidget {
   const VenomShieldApp({super.key});
@@ -34,6 +36,14 @@ class VenomShieldApp extends StatelessWidget {
         GoRoute(
           path: '/hospital-radar',
           builder: (context, state) => const HospitalRadarScreen(),
+        ),
+        GoRoute(
+          path: '/bite-assessment',
+          builder: (context, state) => const BiteAssessmentScreen(),
+        ),
+        GoRoute(
+          path: '/bite-assessment-result',
+          builder: (context, state) => const BiteAssessmentResultScreen(),
         ),
       ],
     );

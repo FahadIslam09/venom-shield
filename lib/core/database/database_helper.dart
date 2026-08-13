@@ -88,30 +88,75 @@ class DatabaseHelper {
     }
   }
 
+  List<Hospital>? _webHospitalsCache;
+
+  Future<List<Hospital>> _loadWebHospitals() async {
+    if (_webHospitalsCache != null) return _webHospitalsCache!;
+    try {
+      final String jsonString = await rootBundle.loadString('assets/data/hospitals.json');
+      final List<dynamic> jsonList = json.decode(jsonString);
+      _webHospitalsCache = jsonList.map((e) => Hospital.fromJson(e)).toList();
+      return _webHospitalsCache!;
+    } catch (e) {
+      print('Failed to load web hospitals: $e');
+      return [];
+    }
+  }
+
   Future<List<Hospital>> getHospitals() async {
+    if (kIsWeb) {
+      return await _loadWebHospitals();
+    }
     final db = await instance.database;
     final result = await db.query('hospitals');
     return result.map((json) => Hospital.fromJson(json)).toList();
   }
 
   Future<List<Hospital>> getNearestHospitals(double userLat, double userLng, {int limit = 10}) async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query('hospitals');
+    List<Hospital> hospitals;
+    if (kIsWeb) {
+      hospitals = await _loadWebHospitals();
+    } else {
+      final db = await instance.database;
+      final List<Map<String, dynamic>> maps = await db.query('hospitals');
+      hospitals = maps.map((json) => Hospital.fromJson(json)).toList();
+    }
     
-    final List<Hospital> hospitals = maps.map((json) => Hospital.fromJson(json)).toList();
-    
+    final sortedHospitals = List<Hospital>.from(hospitals);
     // Sort by Haversine distance in memory (simplest correct option for local db without spatial extensions)
     // ponytail: memory sorting, fine for < 1000 items
-    hospitals.sort((a, b) {
+    sortedHospitals.sort((a, b) {
       double distA = _calculateDistance(userLat, userLng, a.lat, a.lng);
       double distB = _calculateDistance(userLat, userLng, b.lat, b.lng);
       return distA.compareTo(distB);
     });
 
-    return hospitals.take(limit).toList();
+    return sortedHospitals.take(limit).toList();
   }
 
   Future<int> updateAntivenomStock(int id, String status) async {
+    if (kIsWeb) {
+      final list = await _loadWebHospitals();
+      final idx = list.indexWhere((h) => h.id == id);
+      if (idx != -1) {
+        final old = list[idx];
+        list[idx] = Hospital(
+          id: old.id,
+          nameBn: old.nameBn,
+          nameEn: old.nameEn,
+          district: old.district,
+          upazila: old.upazila,
+          lat: old.lat,
+          lng: old.lng,
+          phone: old.phone,
+          type: old.type,
+          antivenomStatus: status,
+          hasEmergency: old.hasEmergency,
+        );
+        return 1;
+      }
+      return 0;
+    }
     final db = await instance.database;
     return await db.update(
       'hospitals',

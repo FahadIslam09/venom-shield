@@ -17,6 +17,13 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    if (project.state.executed) {
+        project.dependencies.add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+    } else {
+        project.afterEvaluate {
+            project.dependencies.add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

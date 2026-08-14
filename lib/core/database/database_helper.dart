@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
+import 'ffi_init.dart';
 import '../utils/local_storage.dart';
 import '../../features/hospital/models/hospital.dart';
 
@@ -33,13 +33,19 @@ class DatabaseHelper {
         symptoms TEXT
       )
     ''');
+    // Ensure settings table exists
+    await _database!.execute('''
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
-    if (!kIsWeb && Platform.isWindows) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+    if (!kIsWeb) {
+      initFfiDatabase();
     }
 
     final dbPath = await getDatabasesPath();
@@ -84,6 +90,13 @@ class DatabaseHelper {
         type $textType,
         antivenom_status $textType,
         has_emergency $boolType
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )
     ''');
 
@@ -275,5 +288,34 @@ class DatabaseHelper {
     }
     final db = await instance.database;
     return await db.query('assessments', orderBy: 'timestamp DESC');
+  }
+
+  Future<void> saveSetting(String key, String value) async {
+    if (kIsWeb) {
+      WebLocalStorage.save(key, value);
+      return;
+    }
+    final db = await database;
+    await db.insert(
+      'settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    if (kIsWeb) {
+      return WebLocalStorage.load(key);
+    }
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'settings',
+      where: 'key = ?',
+      whereArgs: [key],
+    );
+    if (maps.isNotEmpty) {
+      return maps.first['value'] as String;
+    }
+    return null;
   }
 }

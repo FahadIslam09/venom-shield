@@ -1,30 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../utils/local_storage.dart';
+import '../database/database_helper.dart';
 
 enum AppLanguage { bengali, english }
 
 class LocaleNotifier extends StateNotifier<AppLanguage> {
-  LocaleNotifier() : super(AppLanguage.bengali) {
-    _loadSavedLocale();
-  }
+  bool _isFirstLaunch;
+  bool _dialogShown = false;
 
-  void _loadSavedLocale() {
-    final saved = WebLocalStorage.load('user_language');
-    if (saved == 'en') {
-      state = AppLanguage.english;
-    } else {
-      state = AppLanguage.bengali;
-    }
-  }
+  LocaleNotifier({
+    AppLanguage initialLanguage = AppLanguage.bengali,
+    bool initialIsFirstLaunch = true,
+  })  : _isFirstLaunch = initialIsFirstLaunch,
+        super(initialLanguage);
 
-  bool get isFirstLaunch {
-    return WebLocalStorage.load('has_selected_language') != 'true';
+  bool get isFirstLaunch => _isFirstLaunch && !_dialogShown;
+
+  void markDialogShown() {
+    _dialogShown = true;
   }
 
   void setLanguage(AppLanguage language) {
     state = language;
-    WebLocalStorage.save('user_language', language == AppLanguage.english ? 'en' : 'bn');
-    WebLocalStorage.save('has_selected_language', 'true');
+    _isFirstLaunch = false;
+    _dialogShown = true;
+    DatabaseHelper.instance.saveSetting('user_language', language == AppLanguage.english ? 'en' : 'bn');
+    DatabaseHelper.instance.saveSetting('has_selected_language', 'true');
   }
 
   void toggleLanguage() {

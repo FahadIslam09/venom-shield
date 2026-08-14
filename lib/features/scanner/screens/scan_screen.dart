@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
 import '../providers/scanner_provider.dart';
+import '../models/scan_result.dart';
 import '../../triage/providers/triage_provider.dart';
 import '../../../core/utils/connectivity_service.dart';
 
@@ -48,8 +49,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     ref.listen<ScannerState>(scannerProvider, (previous, next) {
       final result = next.result;
       if (result != null && !next.isScanning) {
-        ref.read(triageProvider.notifier).submitImageResult(result);
-        context.pushReplacement('/triage-result');
+        if (result.status == 'identified') {
+          ref.read(triageProvider.notifier).submitImageResult(result);
+          context.pushReplacement('/triage-result');
+        }
       }
     });
 
@@ -195,6 +198,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
           if (state.imagePath == null) _buildMetricsOverlay(),
           // Error State
           if (state.errorMessage != null) _buildErrorOverlay(state, lang),
+          // Validation Overlay
+          if (state.result != null && state.result!.status != 'identified')
+            _buildValidationOverlay(state.result!, lang),
         ],
       ),
     );
@@ -374,6 +380,156 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValidationOverlay(ScanResult result, AppLanguage lang) {
+    final bool isUnidentified = result.status == 'unidentified';
+    
+    // Choose appropriate color theme: warning (yellow/amber) for not_detected, error (red/tertiary) for unidentified
+    final themeColor = isUnidentified ? AppColors.error : const Color(0xFFD97706); // Warm Amber
+    final containerBg = isUnidentified ? AppColors.errorContainer : const Color(0xFFFEF3C7); // Light Amber
+    
+    final title = isUnidentified 
+        ? lang.t('শনাক্তকরণ অসম্পূর্ণ', 'Identification Incomplete')
+        : lang.t('সাপ শনাক্ত করা যায়নি', 'No Snake Detected');
+        
+    final description = isUnidentified
+        ? lang.t(
+            result.descriptionBn.isNotEmpty ? result.descriptionBn : 'ছবিতে সাপ দেখা যাচ্ছে, তবে এর প্রজাতি নিশ্চিতভাবে চিহ্নিত করা যাচ্ছে না। নিরাপত্তার জন্য সতর্কতা অবলম্বন করুন।',
+            result.descriptionEn.isNotEmpty ? result.descriptionEn : 'A snake is visible, but its species cannot be identified with certainty. Please proceed with caution.'
+          )
+        : lang.t(
+            result.descriptionBn.isNotEmpty ? result.descriptionBn : 'ছবিতে কোনো সাপ শনাক্ত করা যায়নি। এটি কোনো খাবার, হাত, ল্যান্ডস্কেপ বা অন্য বস্তুর ছবি হতে পারে।',
+            result.descriptionEn.isNotEmpty ? result.descriptionEn : 'No snake could be detected in this image. It appears to be food, a hand, a landscape, or another unrelated object.'
+          );
+
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.65), // Smooth translucent background
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.outlineVariant, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Icon / Status Indicator
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: containerBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isUnidentified ? Icons.warning_amber_rounded : Icons.find_in_page_outlined,
+                    color: themeColor,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Title
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                // Detailed explanation block
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5), width: 1),
+                  ),
+                  child: Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Action Buttons
+                Row(
+                  children: [
+                    // Retry Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ref.read(scannerProvider.notifier).clear();
+                        },
+                        icon: const Icon(Icons.refresh, size: 14, color: AppColors.primary),
+                        label: Text(
+                          lang.t('আবার চেষ্টা', 'Retry'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Checklist Button
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ref.read(scannerProvider.notifier).clear();
+                          context.pushReplacement('/triage-checklist');
+                        },
+                        icon: const Icon(Icons.checklist, size: 14, color: Colors.white),
+                        label: Text(
+                          lang.t('লক্ষণ তালিকা', 'Checklist'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryContainer,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

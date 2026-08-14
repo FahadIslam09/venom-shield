@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/database/database_helper.dart';
+import 'core/providers/locale_provider.dart';
 import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Run a clean, premium loading splash app instantly
-  runApp(const ProviderScope(child: VenomShieldSplashApp()));
+  runApp(const VenomShieldSplashApp());
+
+  String? savedLanguage;
+  bool isFirstLaunch = true;
 
   try {
     // Warm up database and await pending fonts in parallel
@@ -20,14 +24,25 @@ void main() async {
       warmUpFutures.add(DatabaseHelper.instance.database);
     }
     await Future.wait<dynamic>(warmUpFutures);
+
+    // Read language settings
+    savedLanguage = await DatabaseHelper.instance.getSetting('user_language');
+    final hasSelected = await DatabaseHelper.instance.getSetting('has_selected_language');
+    isFirstLaunch = hasSelected != 'true';
   } catch (e) {
     print('Startup initialization error: $e');
   }
 
   // Swap to the real app when fully ready
   runApp(
-    const ProviderScope(
-      child: VenomShieldApp(),
+    ProviderScope(
+      overrides: [
+        localeProvider.overrideWith((ref) => LocaleNotifier(
+          initialLanguage: savedLanguage == 'en' ? AppLanguage.english : AppLanguage.bengali,
+          initialIsFirstLaunch: isFirstLaunch,
+        )),
+      ],
+      child: const VenomShieldApp(),
     ),
   );
 }

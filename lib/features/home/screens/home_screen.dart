@@ -124,7 +124,10 @@ class HomeScreen extends ConsumerWidget {
     final isFirst = ref.watch(localeProvider.notifier).isFirstLaunch;
     if (isFirst) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showLanguageSelectionDialog(context, ref);
+        if (ref.read(localeProvider.notifier).isFirstLaunch) {
+          ref.read(localeProvider.notifier).markDialogShown();
+          _showLanguageSelectionDialog(context, ref);
+        }
       });
     }
 
@@ -237,7 +240,7 @@ class HomeScreen extends ConsumerWidget {
                 Text(
                   lang.t('জাতীয় হেল্পলাইন - দ্রুত প্রতিক্রিয়া', 'National Helpline - Rapid Response'),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.onTertiaryContainer,
                     letterSpacing: 0.05,
@@ -343,7 +346,7 @@ class HomeScreen extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
@@ -352,7 +355,7 @@ class HomeScreen extends ConsumerWidget {
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: color,
                   ),
@@ -422,7 +425,7 @@ class HomeScreen extends ConsumerWidget {
                   child: Text(
                     lang.t('এআই সক্রিয়', 'AI Active'),
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: AppColors.onPrimaryContainer,
                       letterSpacing: 0.05,
@@ -445,7 +448,7 @@ class HomeScreen extends ConsumerWidget {
             Text(
               lang.t('সাপের কামড়ের চিহ্ন বা ধরণ তাৎক্ষণিকভাবে বিশ্লেষণ করুন।', 'Instantly analyze snake bite marks or patterns.'),
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: AppColors.onSurfaceVariant,
                 height: 1.5,
               ),
@@ -580,7 +583,7 @@ class HomeScreen extends ConsumerWidget {
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 16),
+            const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -620,6 +623,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+
   Widget _buildTag(String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -631,7 +635,7 @@ class HomeScreen extends ConsumerWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w500,
           color: AppColors.onSurface,
           letterSpacing: 0.05,
@@ -728,7 +732,7 @@ class HomeScreen extends ConsumerWidget {
                             'Date: $dateStr • Risk: ${item['risk_percentage'].toStringAsFixed(0)}%'
                           ),
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: AppColors.textSecondary,
                           ),
                         ),

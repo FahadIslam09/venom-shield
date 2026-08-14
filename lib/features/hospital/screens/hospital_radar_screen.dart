@@ -39,6 +39,18 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
     }
   }
 
+  void _moveToLocation(LatLng target) {
+    _mapController.move(target, 13.0);
+  }
+
+  Future<void> _getCurrentLocationAndMove() async {
+    await ref.read(hospitalProvider.notifier).fetchHospitals();
+    final pos = ref.read(hospitalProvider).userPosition;
+    if (pos != null) {
+      _moveToLocation(LatLng(pos.latitude, pos.longitude));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(hospitalProvider);
@@ -69,7 +81,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primaryContainer,
-        onPressed: () => ref.read(hospitalProvider.notifier).fetchHospitals(),
+        onPressed: _getCurrentLocationAndMove,
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
       bottomNavigationBar: const VenomShieldBottomNav(currentIndex: 3),
@@ -677,7 +689,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
           right: 16,
           child: Column(
             children: [
-              _buildMapControl(Icons.my_location, () {}),
+              _buildMapControl(Icons.my_location, _getCurrentLocationAndMove),
               const SizedBox(height: 8),
               _buildMapControl(Icons.layers, () {}),
             ],

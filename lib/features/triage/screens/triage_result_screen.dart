@@ -45,6 +45,10 @@ class TriageResultScreen extends ConsumerWidget {
     final bool isChecklist = result.fallbackLayer != 1;
     final double confidenceVal = result.confidence ?? (isVenomous ? 0.85 : 0.15);
     final String confidencePctBn = _formatNumber('${(confidenceVal * 100).toStringAsFixed(0)}%', lang);
+    
+    // Dynamic Envenomation Risk calculation
+    final double riskVal = isVenomous ? confidenceVal : (1.0 - confidenceVal).clamp(0.05, 0.15);
+    final String riskPctBn = _formatNumber('${(riskVal * 100).toStringAsFixed(0)}%', lang);
 
     // Dynamic symptoms display list
     final Map<String, String> symptomNamesBn = {
@@ -102,7 +106,7 @@ class TriageResultScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. Assessment Type & Result Card
-            _buildPrimaryResultCard(result, isVenomous, isChecklist, confidencePctBn, lang),
+            _buildPrimaryResultCard(result, isVenomous, isChecklist, riskPctBn, lang),
             const SizedBox(height: 20),
 
             // 2. Snake Image Card (if image scan path)
@@ -114,7 +118,7 @@ class TriageResultScreen extends ConsumerWidget {
             ],
 
             // 3. Clinical Symptoms & Warnings Card
-            _buildClinicalWarningsCard(isVenomous, isChecklist, selectedSymptoms, lang),
+            _buildClinicalWarningsCard(result, isVenomous, isChecklist, selectedSymptoms, lang),
             const SizedBox(height: 20),
 
             // 4. First Aid Instructions Card
@@ -133,7 +137,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPrimaryResultCard(dynamic result, bool isVenomous, bool isChecklist, String confidencePctBn, AppLanguage lang) {
+  Widget _buildPrimaryResultCard(dynamic result, bool isVenomous, bool isChecklist, String riskPctBn, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -216,7 +220,7 @@ class TriageResultScreen extends ConsumerWidget {
 
           // Estimated Envenomation Risk %
           Text(
-            lang.t('আনুমানিক বিষক্রিয়ার ঝুঁকি — $confidencePctBn', 'Estimated Envenomation Risk — $confidencePctBn'),
+            lang.t('আনুমানিক বিষক্রিয়ার ঝুঁকি — $riskPctBn', 'Estimated Envenomation Risk — $riskPctBn'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 18,
@@ -420,7 +424,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildClinicalWarningsCard(bool isVenomous, bool isChecklist, List<String> selectedSymptoms, AppLanguage lang) {
+  Widget _buildClinicalWarningsCard(dynamic result, bool isVenomous, bool isChecklist, List<String> selectedSymptoms, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -492,17 +496,71 @@ class TriageResultScreen extends ConsumerWidget {
           const SizedBox(height: 12),
 
           // Medical Disclaimer
-          Text(
-            isVenomous 
-                ? lang.t('বিষক্রিয়া নিশ্চিত করা যাচ্ছে না, তবে আপনার দেওয়া উপসর্গগুলো গুরুতর হওয়ায় দ্রুত নিকটস্থ হাসপাতালে যান।', 'Envenomation cannot be confirmed, but since your symptoms are severe, please go to the nearest hospital immediately.')
-                : lang.t('সাপটি বিষাক্ত ছিল কিনা তা নিশ্চিত হওয়া যায়নি। যেকোনো নতুন বা মৃদু লক্ষণ দেখা দিলে সতর্ক থাকুন এবং ডাক্তারের পরামর্শ নিন।', 'Toxicity of the snake is unverified. Watch closely for any new or mild symptoms and seek medical advice.'),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isVenomous ? AppColors.error : AppColors.textPrimary,
-              height: 1.4,
-            ),
-          ),
+          () {
+            if (isChecklist) {
+              // Checklist Path (Symptom based assessment)
+              return Text(
+                isVenomous
+                    ? lang.t(
+                        'বিষক্রিয়ার লক্ষণ পাওয়া গেছে। আপনার দেওয়া উপসর্গগুলো গুরুতর হওয়ায় দ্রুত নিকটস্থ হাসপাতালে যান।',
+                        'Signs of envenomation detected. Since the reported symptoms are severe, please go to the nearest hospital immediately.'
+                      )
+                    : lang.t(
+                        'বিষক্রিয়ার কোনো স্পষ্ট লক্ষণ পাওয়া যায়নি। যেকোনো নতুন বা মৃদু লক্ষণ দেখা দিলে সতর্ক থাকুন এবং ডাক্তারের পরামর্শ নিন।',
+                        'No clear signs of envenomation detected. Watch closely for any new or mild symptoms and seek medical advice.'
+                      ),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isVenomous ? AppColors.error : AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              );
+            } else {
+              // Image Scan Path
+              final bool isUnidentified = result.matchedSpeciesEn == 'Unknown Species' || result.matchedSpeciesBn == 'অজানা প্রজাতি';
+              if (isUnidentified) {
+                return Text(
+                  lang.t(
+                    'সাপটি নিশ্চিতভাবে শনাক্ত করা যায়নি। নিরাপত্তার জন্য এটিকে বিষাক্ত ধরে নিয়ে সতর্ক থাকুন এবং যেকোনো লক্ষণ দেখা দিলে হাসপাতালে যোগাযোগ করুন।',
+                    'The snake could not be identified with certainty. For safety, assume it may be venomous, watch for symptoms, and consult a medical professional.'
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
+                    height: 1.4,
+                  ),
+                );
+              } else if (isVenomous) {
+                return Text(
+                  lang.t(
+                    'শনাক্তকৃত সাপটি বিষধর (${result.matchedSpeciesBn} / ${result.matchedSpeciesEn})। বিষক্রিয়ার ঝুঁকি এড়াতে দ্রুত নিকটস্থ অ্যান্টি-ভেনমযুক্ত হাসপাতালে যান।',
+                    'The identified snake (${result.matchedSpeciesEn}) is venomous. To avoid envenomation, transport the patient to the nearest hospital stocked with anti-venom immediately.'
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
+                    height: 1.4,
+                  ),
+                );
+              } else {
+                return Text(
+                  lang.t(
+                    'শনাক্তকৃত সাপটি অবিষধর বা বিষহীন (${result.matchedSpeciesBn} / ${result.matchedSpeciesEn})। কামড়ের ক্ষতস্থান পরিষ্কার রাখুন এবং কোনো অস্বাভাবিক লক্ষণ দেখা দিলে চিকিৎসকের পরামর্শ নিন।',
+                    'The identified snake (${result.matchedSpeciesEn}) is non-venomous. Keep the wound clean and consult a physician if any unusual symptoms develop.'
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                    height: 1.4,
+                  ),
+                );
+              }
+            }
+          }(),
 
           if (isChecklist) ...[
             const SizedBox(height: 8),

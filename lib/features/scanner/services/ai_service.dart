@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../core/constants/api_constants.dart';
 import '../models/scan_result.dart';
+import 'snake_database.dart';
 
 class AiService {
   final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 35),
+    receiveTimeout: const Duration(seconds: 35),
   ));
 
   Future<ScanResult?> scanImage(String base64Image) async {
@@ -90,20 +91,25 @@ You are VenomShield AI, an expert herpetologist specializing in snakes found in 
 - Krait vs Wolf Snake: Krait has triangular body cross-section + glossy scales; Wolf Snake has flat head + matte scales
 - Russell's Viper vs any python: Viper has chain-like oval spots + rough keeled scales + triangular head
 
-Respond ONLY with a valid JSON object:
+Respond ONLY with a valid JSON object matching this structure:
 {
+  "status": "identified", "unidentified", or "not_detected",
   "species_bn": "Bangla name",
   "species_en": "English common name (Scientific name)",
   "venomous": true or false,
-  "confidence": 0.0 to 1.0,
+  "confidence": A realistic, conservative confidence value between 0.0 and 1.0 (calibrate based on visibility of key patterns/features; do not default to 0.95 unless exceptionally clear),
   "danger_level": "high", "medium", or "low",
   "first_aid_bn": ["3-4 first aid steps in Bangla"],
   "first_aid_en": ["3-4 first aid steps in English"],
-  "description_bn": "2-3 sentence description in Bangla of the snake features you observed that led to identification",
-  "description_en": "2-3 sentence description in English of the snake features you observed that led to identification"
+  "description_bn": "2-3 sentence description in Bangla",
+  "description_en": "2-3 sentence description in English"
 }
 
-If the image does not contain a snake, return JSON with species_bn: "সাপ শনাক্ত হয়নি", confidence: 0.0.
+## VALIDATION FLOW AND RULES
+- **status: identified**: A snake is clearly visible and its species can be recognized. Provide full details.
+- **status: unidentified**: A snake is visible in the image, but the species is blurry, cut off, or unrecognized. Erring on the side of safety, set "venomous" to true, "confidence" to 0.0, "species_bn" to "অজানা প্রজাতি", "species_en" to "Unknown Species", and provide a warning description.
+- **status: not_detected**: The image contains no snake at all (e.g. food, human hands/faces, pets, random objects, scenery). Set "status" to "not_detected", "species_bn" to "সাপ শনাক্ত হয়নি", "species_en" to "No Snake Detected", "confidence" to 0.0, "venomous" to false, and explain in description Bn/En why a snake was not found (e.g., "The image shows food/hand/object rather than a snake").
+
 Return ONLY raw JSON. No markdown, no code blocks, no extra text.
 ''';
 
@@ -151,6 +157,18 @@ Return ONLY raw JSON. No markdown, no code blocks, no extra text.
         // Remove markdown code blocks if any
         final cleanContent = _cleanJsonString(content);
         final Map<String, dynamic> jsonMap = json.decode(cleanContent);
+        
+        // Override VLM venomous result using local herpetological reference database
+        final String speciesBn = jsonMap['species_bn'] as String? ?? '';
+        final String speciesEn = jsonMap['species_en'] as String? ?? '';
+        final bool rawVenomous = jsonMap['venomous'] == true || jsonMap['venomous'] == 1;
+        
+        final bool verifiedVenomous = SnakeDatabase.checkVenomous(speciesEn, speciesBn, rawVenomous);
+        jsonMap['venomous'] = verifiedVenomous;
+        if (!verifiedVenomous) {
+          jsonMap['danger_level'] = 'low';
+        }
+        
         return ScanResult.fromJson(jsonMap);
       }
     } catch (e) {

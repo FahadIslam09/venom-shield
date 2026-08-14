@@ -8,6 +8,7 @@ void main() {
 
     test('High confidence venomous scan result yields venomous triage', () {
       final scanResult = ScanResult(
+        status: 'identified',
         speciesBn: 'খৈয়া গোখরা',
         speciesEn: 'Spectacled Cobra',
         venomous: true,

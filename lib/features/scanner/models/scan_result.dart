@@ -1,4 +1,5 @@
 class ScanResult {
+  final String status; // identified, unidentified, not_detected
   final String speciesBn;
   final String speciesEn;
   final bool venomous;
@@ -10,6 +11,7 @@ class ScanResult {
   final String descriptionEn;
 
   ScanResult({
+    required this.status,
     required this.speciesBn,
     required this.speciesEn,
     required this.venomous,
@@ -23,6 +25,7 @@ class ScanResult {
 
   factory ScanResult.fromJson(Map<String, dynamic> json) {
     return ScanResult(
+      status: json['status'] as String? ?? 'identified',
       speciesBn: json['species_bn'] as String? ?? 'অজানা প্রজাতি',
       speciesEn: json['species_en'] as String? ?? 'Unknown Species',
       venomous: json['venomous'] == true || json['venomous'] == 1,
@@ -43,6 +46,7 @@ class ScanResult {
 
   Map<String, dynamic> toJson() {
     return {
+      'status': status,
       'species_bn': speciesBn,
       'species_en': speciesEn,
       'venomous': venomous ? 1 : 0,

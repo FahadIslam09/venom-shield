@@ -6,6 +6,8 @@ class TriageResult {
   final String? matchedSpeciesBn;
   final String? matchedSpeciesEn;
   final int fallbackLayer; // 1 = Image Scan, 2 = Symptom checklist, 3 = Fail-safe default
+  final double? confidence;
+  final String? descriptionBn;
 
   TriageResult({
     required this.venomous,
@@ -15,5 +17,7 @@ class TriageResult {
     this.matchedSpeciesBn,
     this.matchedSpeciesEn,
     required this.fallbackLayer,
+    this.confidence,
+    this.descriptionBn,
   });
 }

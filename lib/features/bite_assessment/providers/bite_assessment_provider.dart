@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/bite_assessment_result.dart';
 import '../services/bite_analysis_service.dart';
+import '../../../core/database/database_helper.dart';
+import '../../home/providers/history_provider.dart';
 
 class BiteAssessmentState {
   final bool isAnalyzingImage;
@@ -52,6 +54,8 @@ class BiteAssessmentNotifier extends StateNotifier<BiteAssessmentState> {
   final BiteAnalysisService _analysisService = BiteAnalysisService();
   final ImagePicker _picker = ImagePicker();
 
+  final Ref _ref;
+
   static final Map<String, int> defaultSymptoms = {
     // Local
     'swelling': 0,
@@ -75,7 +79,7 @@ class BiteAssessmentNotifier extends StateNotifier<BiteAssessmentState> {
     'dark_urine': 0,
   };
 
-  BiteAssessmentNotifier()
+  BiteAssessmentNotifier(this._ref)
       : super(BiteAssessmentState(symptoms: Map.from(defaultSymptoms)));
 
   void clear() {
@@ -292,6 +296,19 @@ class BiteAssessmentNotifier extends StateNotifier<BiteAssessmentState> {
       'ক্ষত কাটা, চোষা বা অতিরিক্ত শক্ত বাঁধন দেওয়া নিষেধ (অঙ্গহানি হতে পারে)।'
     ];
 
+    final firstAid = score >= 50.0 ? [
+      'আক্রান্ত অঙ্গটি হৃদপিণ্ডের সমতলের নিচে স্থির রাখুন।',
+      'ক্ষতস্থানে বরফ, ব্লেড বা কোনো শক্ত বাঁধন লাগাবেন না।',
+      'যত দ্রুত সম্ভব নিকটস্থ অ্যান্টি-ভেনমযুক্ত হাসপাতালে রোগীকে নিয়ে যান।',
+      'রোগীকে ওঝার কাছে নিয়ে মূল্যবান "গোল্ডেন আওয়ার" নষ্ট করবেন না।'
+    ] : [
+      'আতঙ্কিত হবেন না। শান্ত থাকুন।',
+      'কামড় খাওয়া অঙ্গটি নড়াচড়া করবেন না। হাত বা পা হলে স্প্লিন্ট (যেমন কাঠ বা বাঁশের টুকরো) দিয়ে স্থির করে রাখুন।',
+      'ক্ষতস্থান সাবান ও হালকা জল দিয়ে পরিষ্কার করুন।',
+      'ক্ষতস্থানের ওপর কোনো শক্ত বাঁধন বা টর্নিকেট দেবেন না (এটি রক্ত চলাচল বন্ধ করে অঙ্গহানির কারণ হতে পারে)।',
+      'ব্লেড দিয়ে কেটে রক্ত বের করার চেষ্টা করবেন না বা ওঝার কাছে গিয়ে সময় নষ্ট করবেন না।'
+    ];
+
     state = state.copyWith(
       result: BiteAssessmentResult(
         riskPercentage: score,
@@ -300,12 +317,28 @@ class BiteAssessmentNotifier extends StateNotifier<BiteAssessmentState> {
         observations: state.aiObservations,
         observedReasons: reasons,
         warningMessages: safetyRules,
+        firstAidBn: firstAid,
       ),
     );
+
+    // Save assessment to SQLite database history
+    DatabaseHelper.instance.saveAssessment(
+      type: 'ক্ষত মূল্যায়ন',
+      venomous: score >= 50.0,
+      riskPercentage: score,
+      riskLevel: level,
+      matchedSpecies: state.aiObservations.isNotEmpty ? state.aiObservations.join(', ') : null,
+      symptoms: state.symptoms.entries
+          .where((e) => e.value > 0)
+          .map((e) => '${e.key}:${e.value}')
+          .toList(),
+    ).then((_) {
+      _ref.read(historyProvider.notifier).loadHistory();
+    });
   }
 }
 
 final biteAssessmentProvider =
     StateNotifierProvider<BiteAssessmentNotifier, BiteAssessmentState>((ref) {
-  return BiteAssessmentNotifier();
+  return BiteAssessmentNotifier(ref);
 });

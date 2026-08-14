@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/bite_assessment_provider.dart';
@@ -22,300 +21,495 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
 
     if (result == null) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('ঝুঁকি মূল্যায়ন ফলাফল')),
         body: const Center(
-          child: Text('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'),
+          child: Text('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি।'),
         ),
       );
     }
 
-    // Determine colors based on risk level
-    Color riskColor;
-    Color bgGradientStart;
-    Color bgGradientEnd;
     bool isUrgent = result.riskLevel == 'উচ্চ ঝুঁকি' || result.riskLevel == 'অত্যন্ত উচ্চ ঝুঁকি';
-
-    switch (result.riskLevel) {
-      case 'অত্যন্ত উচ্চ ঝুঁকি':
-        riskColor = const Color(0xFFB71C1C);
-        bgGradientStart = const Color(0xFFD32F2F);
-        bgGradientEnd = const Color(0xFF880E4F);
-        break;
-      case 'উচ্চ ঝুঁকি':
-        riskColor = AppColors.accent;
-        bgGradientStart = AppColors.accent;
-        bgGradientEnd = const Color(0xFFC62828);
-        break;
-      case 'মাঝারি ঝুঁকি':
-        riskColor = AppColors.warning;
-        bgGradientStart = AppColors.warning;
-        bgGradientEnd = const Color(0xFFE65100);
-        break;
-      default:
-        riskColor = AppColors.safe;
-        bgGradientStart = AppColors.safe;
-        bgGradientEnd = const Color(0xFF1B5E20);
-    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('ঝুঁকি মূল্যায়ন ফলাফল'),
-        leading: IconButton(
-          icon: const Icon(Icons.home),
-          onPressed: () {
-            ref.read(biteAssessmentProvider.notifier).clear();
-            context.go('/');
-          },
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top App Bar
+            _buildTopBar(context, ref),
+            // Main Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Action Required Banner
+                    if (isUrgent) ...[
+                      _buildActionBanner(),
+                      const SizedBox(height: 16),
+                    ],
+                    // Risk Score
+                    _buildRiskScoreGauge(result),
+                    const SizedBox(height: 16),
+                    // Case Details
+                    _buildSymptomSummary(result),
+                    const SizedBox(height: 16),
+                    // First Aid Protocol
+                    _buildFirstAidProtocol(result),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Banner Card
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [bgGradientStart, bgGradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: riskColor.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Icon(
-                    isUrgent ? Icons.warning_rounded : Icons.info_outline_rounded,
-                    color: Colors.white,
-                    size: 64,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '${result.riskPercentage.toStringAsFixed(0)}% — ${result.riskLevel}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    result.riskDescription,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+      bottomNavigationBar: _buildEmergencyCTA(context),
+    );
+  }
 
-            // Urgent Banner Alert
-            if (isUrgent) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEBEE),
-                  border: Border.all(color: const Color(0xFFEF9A9A), width: 1.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, color: Color(0xFFC62828), size: 24),
-                    SizedBox(width: 12),
-                    Text(
-                      'অবিলম্বে চিকিৎসা নিন',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFC62828),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Diagnostic Reasons/Observations
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'লক্ষণ ও পর্যবেক্ষণ রিপোর্ট',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const Divider(height: 20),
-                    if (result.observedReasons.isEmpty)
-                      const Text(
-                        'কোনো লক্ষণ চিহ্নিত করা হয়নি।',
-                        style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                      )
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: result.observedReasons.length,
-                        separatorBuilder: (context, idx) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 6),
-                                child: Icon(Icons.circle, size: 6, color: AppColors.primary),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  result.observedReasons[index],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textPrimary,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Safety Protocols & Restrictions (নিষেধসমূহ)
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'জরুরি নির্দেশনা ও সুরক্ষাবিধি',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const Divider(height: 20),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: result.warningMessages.length,
-                      separatorBuilder: (context, idx) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final msg = result.warningMessages[index];
-                        final isAlert = msg.contains('ওঝা') || msg.contains('কেটে') || msg.contains('বাঁধুন');
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              isAlert ? Icons.cancel_outlined : Icons.check_circle_outline,
-                              size: 16,
-                              color: isAlert ? AppColors.accent : AppColors.safe,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                msg,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: isAlert ? AppColors.accent : AppColors.textPrimary,
-                                  fontWeight: isAlert ? FontWeight.bold : FontWeight.normal,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Emergency Action Buttons
-            ElevatedButton.icon(
-              onPressed: () => context.push('/hospital-radar'),
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('নিকটস্থ অ্যান্টি-ভেনম হাসপাতাল খুঁজুন'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            OutlinedButton.icon(
-              onPressed: () => _makeCall('999'),
-              icon: const Icon(Icons.phone_in_talk, color: AppColors.accent),
-              label: const Text('৯৯৯ এ কল করুন (জরুরি সাহায্য)'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.accent,
-                side: const BorderSide(color: AppColors.accent, width: 1.5),
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            TextButton(
-              onPressed: () {
-                ref.read(biteAssessmentProvider.notifier).clear();
-                context.go('/');
-              },
-              child: const Text(
-                'হোমে ফিরে যান',
+  Widget _buildTopBar(BuildContext context, WidgetRef ref) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.outlineVariant, width: 1),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.note_alt_outlined, color: AppColors.primary, size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'VenomShield AI',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
               ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(999),
             ),
-            const SizedBox(height: 36),
-          ],
+            child: Text(
+              'অফলাইন',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurfaceVariant,
+                letterSpacing: 0.08,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBanner() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.error,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Icon(Icons.warning, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'অবিলম্বে চিকিৎসা নিন',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'রোগীকে দ্রুততম সময়ের মধ্যে নিকটস্থ হাসপাতালে স্থানান্তর করা প্রয়োজন।',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRiskScoreGauge(dynamic result) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            'ঝুঁকি মূল্যায়ন',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.secondary,
+              letterSpacing: 0.08,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Gauge
+          SizedBox(
+            width: 192,
+            height: 192,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Background circle
+                SizedBox(
+                  width: 192,
+                  height: 192,
+                  child: CircularProgressIndicator(
+                    value: 1.0,
+                    strokeWidth: 8,
+                    color: AppColors.surfaceContainerHigh,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+                // Progress circle
+                SizedBox(
+                  width: 192,
+                  height: 192,
+                  child: CircularProgressIndicator(
+                    value: result.riskPercentage / 100,
+                    strokeWidth: 8,
+                    color: AppColors.error,
+                    backgroundColor: Colors.transparent,
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                // Center text
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${result.riskPercentage.toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            result.riskLevel,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.error,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            result.riskDescription,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSymptomSummary(dynamic result) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'লক্ষণ ও পর্যবেক্ষণ রিপোর্ট',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const Icon(Icons.monitor_heart, color: AppColors.secondary, size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (result.observedReasons.isEmpty)
+            const Text(
+              'কোনো লক্ষণ চিহ্নিত করা হয়নি।',
+              style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+            )
+          else
+            ...result.observedReasons.map((reason) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainer,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.secondary, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          reason,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFirstAidProtocol(dynamic result) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceContainerHighest, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'প্রাথমিক করণীয়',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'সক্রিয়',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.08,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...result.firstAidBn.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final step = entry.value;
+            final isWarning = step.contains('ওঝা') || step.contains('কেটে') || step.contains('বাঁধুন');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: idx == 0 ? AppColors.surfaceContainerLow : AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: idx == 0 ? AppColors.primaryContainer : AppColors.surfaceContainerHighest,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: isWarning ? AppColors.error : AppColors.primaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(
+                        isWarning ? Icons.close : Icons.check,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            step,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: isWarning ? AppColors.error : AppColors.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmergencyCTA(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+            top: BorderSide(color: AppColors.outlineVariant, width: 1),
+          ),
+        ),
+        child: GestureDetector(
+          onTap: () => _makeCall('999'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.tertiaryContainer,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.tertiaryContainer, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'জাতীয় হেল্পলাইন',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onTertiaryContainer,
+                        letterSpacing: 0.05,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '৯৯৯ এ কল করুন',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Icon(Icons.emergency, color: Colors.white, size: 24),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

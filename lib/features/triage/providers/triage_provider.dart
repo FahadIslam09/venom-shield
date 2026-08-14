@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/triage_result.dart';
 import '../services/triage_engine.dart';
 import '../../scanner/models/scan_result.dart';
+import '../../../core/database/database_helper.dart';
+import '../../home/providers/history_provider.dart';
 
 class TriageState {
   final Map<String, bool> symptomAnswers;
@@ -25,6 +27,7 @@ class TriageState {
 
 class TriageNotifier extends StateNotifier<TriageState> {
   final TriageEngine _engine = TriageEngine();
+  final Ref _ref;
 
   static final Map<String, bool> defaultSymptoms = {
     'hood_seen': false,
@@ -36,7 +39,7 @@ class TriageNotifier extends StateNotifier<TriageState> {
     'swelling': false,
   };
 
-  TriageNotifier() : super(TriageState(symptomAnswers: Map.from(defaultSymptoms)));
+  TriageNotifier(this._ref) : super(TriageState(symptomAnswers: Map.from(defaultSymptoms)));
 
   void clear() {
     state = TriageState(symptomAnswers: Map.from(defaultSymptoms));
@@ -51,6 +54,19 @@ class TriageNotifier extends StateNotifier<TriageState> {
   void submitChecklist() {
     final result = _engine.processTriage(symptomAnswers: state.symptomAnswers);
     state = state.copyWith(result: result);
+    // Dynamic history save
+    DatabaseHelper.instance.saveAssessment(
+      type: 'লক্ষণ তালিকা',
+      venomous: result.venomous,
+      riskPercentage: result.venomous ? 85.0 : 15.0,
+      riskLevel: result.venomous ? 'উচ্চ ঝুঁকি' : 'কম ঝুঁকি',
+      symptoms: state.symptomAnswers.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList(),
+    ).then((_) {
+      _ref.read(historyProvider.notifier).loadHistory();
+    });
   }
 
   void submitImageResult(ScanResult scanResult, {bool isBiteMark = false}) {
@@ -59,6 +75,16 @@ class TriageNotifier extends StateNotifier<TriageState> {
       isBiteMarkScan: isBiteMark,
     );
     state = state.copyWith(result: result);
+    // Dynamic history save
+    DatabaseHelper.instance.saveAssessment(
+      type: 'সাপ স্ক্যান',
+      venomous: result.venomous,
+      riskPercentage: (scanResult.confidence * 100),
+      riskLevel: result.venomous ? 'উচ্চ ঝুঁকি' : 'কম ঝুঁকি',
+      matchedSpecies: '${scanResult.speciesBn} (${scanResult.speciesEn})',
+    ).then((_) {
+      _ref.read(historyProvider.notifier).loadHistory();
+    });
   }
 
   void submitFailSafe() {
@@ -68,5 +94,5 @@ class TriageNotifier extends StateNotifier<TriageState> {
 }
 
 final triageProvider = StateNotifierProvider<TriageNotifier, TriageState>((ref) {
-  return TriageNotifier();
+  return TriageNotifier(ref);
 });

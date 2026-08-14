@@ -16,6 +16,19 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('venonshield.db');
+    // Ensure the assessments table exists (schema migration)
+    await _database!.execute('''
+      CREATE TABLE IF NOT EXISTS assessments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        type TEXT NOT NULL,
+        venomous INTEGER NOT NULL,
+        risk_percentage REAL NOT NULL,
+        risk_level TEXT NOT NULL,
+        matched_species TEXT,
+        symptoms TEXT
+      )
+    ''');
     return _database!;
   }
 
@@ -40,6 +53,19 @@ class DatabaseHelper {
     const textType = 'TEXT NOT NULL';
     const boolType = 'INTEGER NOT NULL';
     const doubleType = 'REAL NOT NULL';
+
+    await db.execute('''
+      CREATE TABLE assessments (
+        id $idType,
+        timestamp $textType,
+        type $textType,
+        venomous $boolType,
+        risk_percentage $doubleType,
+        risk_level $textType,
+        matched_species TEXT,
+        symptoms TEXT
+      )
+    ''');
 
     await db.execute('''
       CREATE TABLE hospitals (
@@ -174,5 +200,57 @@ class DatabaseHelper {
         math.cos((lat2 - lat1) * p) / 2 +
         math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lon2 - lon1) * p)) / 2;
     return 12742 * math.asin(math.sqrt(a)); // 2 * R; R = 6371 km
+  }
+
+  // Save assessments in local database history
+  Future<int> saveAssessment({
+    required String type,
+    required bool venomous,
+    required double riskPercentage,
+    required String riskLevel,
+    String? matchedSpecies,
+    List<String> symptoms = const [],
+  }) async {
+    final item = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'type': type,
+      'venomous': venomous ? 1 : 0,
+      'risk_percentage': riskPercentage,
+      'risk_level': riskLevel,
+      'matched_species': matchedSpecies,
+      'symptoms': json.encode(symptoms),
+    };
+
+    if (kIsWeb) {
+      try {
+        final list = await _getWebAssessments();
+        item['id'] = list.length + 1;
+        list.add(item);
+        _webAssessmentsCache = list;
+        return 1;
+      } catch (e) {
+        print('Web save assessment failed: $e');
+        return 0;
+      }
+    }
+
+    final db = await instance.database;
+    return await db.insert('assessments', item);
+  }
+
+  List<Map<String, dynamic>>? _webAssessmentsCache;
+  Future<List<Map<String, dynamic>>> _getWebAssessments() async {
+    if (_webAssessmentsCache != null) return _webAssessmentsCache!;
+    _webAssessmentsCache = [];
+    return _webAssessmentsCache!;
+  }
+
+  // Fetch all assessments from history
+  Future<List<Map<String, dynamic>>> getAssessments() async {
+    if (kIsWeb) {
+      return await _getWebAssessments();
+    }
+    final db = await instance.database;
+    return await db.query('assessments', orderBy: 'timestamp DESC');
   }
 }

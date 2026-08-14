@@ -182,20 +182,23 @@ class SymptomChecklistScreen extends ConsumerWidget {
           ),
           
           // Bottom button
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: AppColors.border),
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: AppColors.border),
+                ),
               ),
-            ),
-            child: ElevatedButton(
-              onPressed: () {
-                ref.read(triageProvider.notifier).submitChecklist();
-                context.pushReplacement('/triage-result');
-              },
-              child: const Text('তাত্ক্ষণিক ফলাফল দেখুন'),
+              child: ElevatedButton(
+                onPressed: () {
+                  ref.read(triageProvider.notifier).submitChecklist();
+                  context.pushReplacement('/triage-result');
+                },
+                child: const Text('তাত্ক্ষণিক ফলাফল দেখুন'),
+              ),
             ),
           ),
         ],

@@ -5,6 +5,7 @@ class BiteAssessmentResult {
   final List<String> observations; // Observations from AI (if any)
   final List<String> observedReasons; // List of matched reasons
   final List<String> warningMessages;
+  final List<String> firstAidBn;
 
   BiteAssessmentResult({
     required this.riskPercentage,
@@ -13,5 +14,6 @@ class BiteAssessmentResult {
     required this.observations,
     required this.observedReasons,
     required this.warningMessages,
+    required this.firstAidBn,
   });
 }

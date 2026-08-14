@@ -34,6 +34,8 @@ class TriageEngine {
         matchedSpeciesBn: scanResult.speciesBn,
         matchedSpeciesEn: scanResult.speciesEn,
         fallbackLayer: 1,
+        confidence: scanResult.confidence,
+        descriptionBn: scanResult.descriptionBn,
       );
     }
 
@@ -45,6 +47,7 @@ class TriageEngine {
         reasonBn: 'কামড়ের স্থানের ছবি বিশ্লেষণ করে বিষদাঁতের গভীর ক্ষতের লক্ষণ পাওয়া গেছে।',
         firstAidBn: venomousFirstAidBn,
         fallbackLayer: 1,
+        confidence: scanResult.confidence,
       );
     }
 
@@ -60,7 +63,7 @@ class TriageEngine {
       if (symptomAnswers['two_punctures'] == true) score += 3.0;   // fang punctures
       if (symptomAnswers['severe_pain'] == true) score += 2.0;     // local envenomation
       if (symptomAnswers['swelling'] == true) score += 2.5;        // local swelling
-
+ 
       if (score >= 4.0) {
         return TriageResult(
           venomous: true,
@@ -68,6 +71,7 @@ class TriageEngine {
           reasonBn: 'শারীরিক লক্ষণ ও সাপের বিবরণ অনুযায়ী এটি বিষাক্ত সাপের কামড় হওয়ার সম্ভাবনা রয়েছে (স্কোর: ${score.toStringAsFixed(1)})।',
           firstAidBn: venomousFirstAidBn,
           fallbackLayer: 2,
+          confidence: score >= 8.0 ? 0.85 : 0.70,
         );
       } else {
         return TriageResult(
@@ -76,6 +80,7 @@ class TriageEngine {
           reasonBn: 'লক্ষণ বিশ্লেষণ করে বিষক্রিয়ার তেমন কোনো চিহ্ন পাওয়া যায়নি (স্কোর: ${score.toStringAsFixed(1)})। তবুও সতর্ক থাকুন।',
           firstAidBn: standardFirstAidBn,
           fallbackLayer: 2,
+          confidence: 0.90,
         );
       }
     }
@@ -88,6 +93,7 @@ class TriageEngine {
       reasonBn: 'পর্যপ্ত তথ্য পাওয়া যায়নি। জাতীয় গাইডলাইন অনুযায়ী জরুরি সতর্কতাবশত কামড়টিকে বিষাক্ত হিসেবে বিবেচনা করে হাসপাতালে রেফার করা হচ্ছে।',
       firstAidBn: venomousFirstAidBn,
       fallbackLayer: 3,
+      confidence: 0.50,
     );
   }
 }

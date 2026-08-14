@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../providers/triage_provider.dart';
 import '../../scanner/providers/scanner_provider.dart';
+import '../../scanner/services/snake_database.dart';
 
 class TriageResultScreen extends ConsumerWidget {
   const TriageResultScreen({super.key});
@@ -47,7 +48,12 @@ class TriageResultScreen extends ConsumerWidget {
     final String confidencePctBn = _formatNumber('${(confidenceVal * 100).toStringAsFixed(0)}%', lang);
     
     // Dynamic Envenomation Risk calculation
-    final double riskVal = isVenomous ? confidenceVal : (1.0 - confidenceVal).clamp(0.05, 0.15);
+    double riskVal;
+    if (isVenomous) {
+      riskVal = 0.85 + (confidenceVal * 0.10);
+    } else {
+      riskVal = 0.10 + ((1.0 - confidenceVal) * 0.50);
+    }
     final String riskPctBn = _formatNumber('${(riskVal * 100).toStringAsFixed(0)}%', lang);
 
     // Dynamic symptoms display list
@@ -117,8 +123,10 @@ class TriageResultScreen extends ConsumerWidget {
               const SizedBox(height: 20),
             ],
 
-            // 3. Clinical Symptoms & Warnings Card
-            _buildClinicalWarningsCard(result, isVenomous, isChecklist, selectedSymptoms, lang),
+            // 3. Clinical Symptoms or Bite Risks Card
+            isChecklist
+                ? _buildClinicalWarningsCard(result, isVenomous, isChecklist, selectedSymptoms, lang)
+                : _buildBiteRisksCard(result, isVenomous, lang),
             const SizedBox(height: 20),
 
             // 4. First Aid Instructions Card
@@ -230,10 +238,15 @@ class TriageResultScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            lang.t(
-              'এই শতাংশটি আপনার দেওয়া লক্ষণসমূহের ওপর ভিত্তি করে বিষক্রিয়ার আনুমানিক ঝুঁকি নির্দেশ করে, সাপের প্রজাতি বিষধর হওয়ার নিশ্চয়তা নয়।', 
-              'This percentage indicates the estimated risk of envenomation based on your symptoms, not the certainty of the snake species being venomous.'
-            ),
+            isChecklist
+                ? lang.t(
+                    'এই শতাংশটি আপনার দেওয়া লক্ষণসমূহের ওপর ভিত্তি করে বিষক্রিয়ার আনুমানিক ঝুঁকি নির্দেশ করে, সাপের প্রজাতি বিষধর হওয়ার নিশ্চয়তা নয়।',
+                    'This percentage indicates the estimated risk of envenomation based on your symptoms, not the certainty of the snake species being venomous.'
+                  )
+                : lang.t(
+                    'এই শতাংশটি সনাক্তকৃত সাপের প্রজাতি এবং এর বিষধর হওয়ার নিশ্চিততার ওপর ভিত্তি করে আনুমানিক বিষক্রিয়ার ঝুঁকি নির্দেশ করে। কোনো প্রকার উপসর্গ দেখা দেওয়ার অপেক্ষা না করে অবিলম্বে জরুরি সাহায্য নিন।',
+                    'This percentage indicates the estimated risk of envenomation based on the identified snake species and its venomous classification. Seek immediate medical attention without waiting for symptoms.'
+                  ),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 13,
@@ -575,6 +588,124 @@ class TriageResultScreen extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildBiteRisksCard(dynamic result, bool isVenomous, AppLanguage lang) {
+    final speciesDetails = SnakeDatabase.getSpeciesDetails(
+      result.matchedSpeciesEn ?? '',
+      result.matchedSpeciesBn ?? '',
+    );
+
+    // Default messages if species not found in database or unidentified
+    final isUnidentified = result.matchedSpeciesEn == 'Unknown Species' || result.matchedSpeciesBn == 'অজানা প্রজাতি';
+    
+    final biteEffects = speciesDetails?.biteEffectsBn != null 
+        ? lang.t(speciesDetails!.biteEffectsBn, speciesDetails.biteEffectsEn)
+        : (isUnidentified
+            ? lang.t('সাপের প্রজাতি অজানা হওয়ায় বিষক্রিয়ার প্রকৃতি সুনির্দিষ্ট করা যায়নি।', 'Since the species is unknown, specific venom effects cannot be determined.')
+            : lang.t('প্রজাতির বিষক্রিয়ার ধরণ নির্ভরযোগ্য চিকিৎসা উৎস থেকে যাচাই করুন।', 'Verify venom effects for this species from reliable medical sources.'));
+            
+    final symptoms = speciesDetails?.symptomsBn != null
+        ? lang.t(speciesDetails!.symptomsBn, speciesDetails.symptomsEn)
+        : (isUnidentified
+            ? lang.t('বিষাক্ত সাপের কামড়ে সাধারণত তীব্র ব্যথা, ফোলাভাব, রক্তপাত বা স্নায়বিক অসাড়তা দেখা দেয়।', 'Venomous bites typically cause severe pain, swelling, bleeding, or numbness.')
+            : lang.t('ক্ষতস্থান লাল হওয়া, ফোলা ও ব্যথার অনুভূতি হতে পারে।', 'Local redness, swelling, and pain may occur.'));
+            
+    final progression = speciesDetails?.progressionBn != null
+        ? lang.t(speciesDetails!.progressionBn, speciesDetails.progressionEn)
+        : (isUnidentified
+            ? lang.t('নিরাপত্তার স্বার্থে যেকোনো সাপ কামড়ানোর পর দ্রুত বিষক্রিয়া ছড়িয়ে পড়তে পারে বলে বিবেচনা করতে হবে।', 'For safety, any snakebite must be considered capable of rapid systemic progression.')
+            : lang.t('বিষ ছড়ানোর আশঙ্কা কম, তবে ক্ষতস্থানে সংক্রমণের দিকে নজর রাখা জরুরি।', 'Low risk of systemic spread, but monitor the wound for infection.'));
+            
+    final fatality = speciesDetails?.fatalityBn != null
+        ? lang.t(speciesDetails!.fatalityBn, speciesDetails.fatalityEn)
+        : (isUnidentified
+            ? lang.t('কিছু সাপের কামড় প্রাণঘাতী হতে পারে। দ্রুত চিকিৎসা গ্রহণ প্রাণ রক্ষা করতে পারে।', 'Bites from unidentified snakes can be highly dangerous and potentially fatal. Prompt treatment saves lives.')
+            : lang.t('অবিষধর সাপের ক্ষেত্রে সাধারণত মৃত্যুর বা গুরুতর ঝুঁকির কোনো আশঙ্কা নেই।', 'Non-venomous bites carry no risk of systemic toxicity or fatality.'));
+
+    final actions = speciesDetails?.actionsBn != null
+        ? lang.t(speciesDetails!.actionsBn, speciesDetails.actionsEn)
+        : lang.t('আক্রান্ত অঙ্গটি নড়াচড়া না করে হৃদপিণ্ডের সমতলের নিচে স্থির রাখুন। ক্ষত কাটবেন না বা শক্ত বাঁধবেন না।', 'Immobilize the bitten limb and keep it below heart level. Do not cut or apply tight tourniquets.');
+
+    final emergency = speciesDetails?.emergencyBn != null
+        ? lang.t(speciesDetails!.emergencyBn, speciesDetails.emergencyEn)
+        : (isUnidentified
+            ? lang.t('যদি সাপে কামড় দিয়ে থাকে, তবে কোনো লক্ষণের অপেক্ষা না করে অবিলম্বে নিকটস্থ হাসপাতালে যান।', 'If bitten, transport the patient to the nearest hospital immediately without waiting for symptoms.')
+            : lang.t('কোনো অস্বাভাবিক জটিলতা দেখা দিলে বা কামড় খেয়ে থাকলে চিকিৎসকের সাথে পরামর্শ করুন।', 'Consult a physician if any unusual complications develop.'));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isVenomous ? AppColors.errorContainer.withOpacity(0.15) : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isVenomous ? AppColors.error.withOpacity(0.3) : AppColors.outlineVariant,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: isVenomous ? AppColors.error : AppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                lang.t('সাপের বিবরণ ও কামড়ের ঝুঁকি', 'Snake Details & Bite Risks'),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isVenomous ? AppColors.error : AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          _buildInfoRow(lang.t('বিষক্রিয়ার ধরণ ও প্রভাব', 'Venom Toxicity & Effects'), biteEffects, isVenomous),
+          const Divider(height: 24),
+          _buildInfoRow(lang.t('সম্ভাবনা ও লক্ষণসমূহ', 'Possible Symptoms'), symptoms, isVenomous),
+          const Divider(height: 24),
+          _buildInfoRow(lang.t('অগ্রগতি ও সময়কাল', 'Progression & Timeline'), progression, isVenomous),
+          const Divider(height: 24),
+          _buildInfoRow(lang.t('ঝুঁকির মাত্রা ও প্রাণঘাতীতা', 'Severity & Fatality Risk'), fatality, isVenomous),
+          const Divider(height: 24),
+          _buildInfoRow(lang.t('তাৎক্ষণিক করণীয়', 'Immediate First Aid'), actions, isVenomous),
+          const Divider(height: 24),
+          _buildInfoRow(lang.t('জরুরি চিকিৎসার নির্দেশনা', 'Emergency Medical Guidance'), emergency, isVenomous),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String title, String description, bool isVenomous) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isVenomous ? AppColors.error : AppColors.primary,
+            letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          description,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.onSurfaceVariant,
+            height: 1.45,
+          ),
+        ),
+      ],
     );
   }
 

@@ -40,6 +40,30 @@ class DatabaseHelper {
         value TEXT NOT NULL
       )
     ''');
+
+    // Ensure hospitals table exists (schema migration)
+    await _database!.execute('''
+      CREATE TABLE IF NOT EXISTS hospitals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name_bn TEXT NOT NULL,
+        name_en TEXT NOT NULL,
+        district TEXT NOT NULL,
+        upazila TEXT NOT NULL,
+        lat REAL NOT NULL,
+        lng REAL NOT NULL,
+        phone TEXT NOT NULL,
+        type TEXT NOT NULL,
+        antivenom_status TEXT NOT NULL,
+        has_emergency INTEGER NOT NULL
+      )
+    ''');
+
+    // Seed hospitals table if it is currently empty
+    final countResult = Sqflite.firstIntValue(await _database!.rawQuery('SELECT COUNT(*) FROM hospitals'));
+    if (countResult == 0) {
+      await _seedDatabase(_database!);
+    }
+
     return _database!;
   }
 

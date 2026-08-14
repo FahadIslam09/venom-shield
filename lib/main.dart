@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +23,12 @@ void main() async {
     ];
     if (!kIsWeb) {
       warmUpFutures.add(DatabaseHelper.instance.database);
+      // Trigger a network call to initialize sockets and trigger OS network permission prompts
+      warmUpFutures.add(
+        InternetAddress.lookup('connectivitycheck.gstatic.com')
+            .timeout(const Duration(seconds: 1))
+            .catchError((_) => <InternetAddress>[]),
+      );
     }
     await Future.wait<dynamic>(warmUpFutures);
 

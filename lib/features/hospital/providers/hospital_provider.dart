@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/database/database_helper.dart';
@@ -114,15 +115,14 @@ class HospitalNotifier extends StateNotifier<HospitalState> {
   }
 
   Future<Position> _determinePosition() async {
+    if (kIsWeb) {
+      return Future.error('Location services are not supported on web platforms.');
+    }
+
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-
+    // 1. Check and request location permission first to ensure user gets prompted on startup
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -134,6 +134,12 @@ class HospitalNotifier extends StateNotifier<HospitalState> {
     if (permission == LocationPermission.deniedForever) {
       return Future.error('Location permissions are permanently denied, we cannot request permissions.');
     } 
+
+    // 2. Test if location services (GPS hardware toggle) are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
 
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.medium,

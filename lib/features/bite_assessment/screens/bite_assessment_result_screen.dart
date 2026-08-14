@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../providers/bite_assessment_provider.dart';
 
 class BiteAssessmentResultScreen extends ConsumerWidget {
@@ -19,18 +21,56 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(biteAssessmentProvider);
     final result = state.result;
+    final lang = ref.watch(localeProvider);
 
     if (result == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(title: const Text('ঝুঁকি মূল্যায়ন ফলাফল')),
-        body: const Center(
-          child: Text('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি।'),
+        appBar: AppBar(
+          title: Text(lang.t('ঝুঁকি মূল্যায়ন ফলাফল', 'Risk Assessment Results')),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/'),
+          ),
+        ),
+        body: Center(
+          child: Text(lang.t('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি।', 'No assessment information found.')),
         ),
       );
     }
 
     bool isUrgent = result.riskLevel == 'উচ্চ ঝুঁকি' || result.riskLevel == 'অত্যন্ত উচ্চ ঝুঁকি';
+
+    final String riskLevelText = result.riskLevel == 'উচ্চ ঝুঁকি' || result.riskLevel == 'High Risk'
+        ? lang.t('উচ্চ ঝুঁকি', 'High Risk')
+        : (result.riskLevel == 'অত্যন্ত উচ্চ ঝুঁকি' || result.riskLevel == 'Extremely High Risk'
+            ? lang.t('অত্যন্ত উচ্চ ঝুঁকি', 'Extremely High Risk')
+            : (result.riskLevel == 'মাঝারি ঝুঁকি' || result.riskLevel == 'Medium Risk'
+                ? lang.t('মাঝারি ঝুঁকি', 'Medium Risk')
+                : lang.t('কম ঝুঁকি', 'Low Risk')));
+
+    final String riskDescriptionText = result.riskDescription == 'জীবন-ঝুঁকিপূর্ণ লক্ষণ রয়েছে। অবিলম্বে জরুরি চিকিৎসা প্রয়োজন।'
+        ? lang.t('জীবন-ঝুঁকিপূর্ণ লক্ষণ রয়েছে। অবিলম্বে জরুরি চিকিৎসা প্রয়োজন।', 'Life-threatening symptoms detected. Urgent medical attention required.')
+        : (result.riskDescription == 'একাধিক গুরুতর লক্ষণ পাওয়া গেছে। দ্রুত হাসপাতালে যান।'
+            ? lang.t('একাধিক গুরুতর লক্ষণ পাওয়া গেছে। দ্রুত হাসপাতালে যান।', 'Multiple severe symptoms detected. Go to a hospital quickly.')
+            : (result.riskDescription == 'কিছু উদ্বেগজনক লক্ষণ আছে। ডাক্তারী পর্যবেক্ষণ প্রয়োজন।'
+                ? lang.t('কিছু উদ্বেগজনক লক্ষণ আছে। ডাক্তারী পর্যবেক্ষণ প্রয়োজন।', 'Some concerning symptoms detected. Medical observation required.')
+                : lang.t('গুরুতর লক্ষণ পাওয়া যায়নি। তবে সতর্ক থাকুন এবং পর্যবেক্ষণ করুন।', 'No severe symptoms detected. Monitor closely and remain cautious.')));
+
+    final List<String> firstAidStepsEn = result.riskPercentage >= 50.0 ? [
+      'Keep the affected limb immobilized below heart level.',
+      'Do not apply ice, cut the wound, or tie any tight tourniquets.',
+      'Transport the patient to the nearest hospital stocked with anti-venom as quickly as possible.',
+      'Do not waste the precious "golden hour" by taking the patient to a traditional healer.'
+    ] : [
+      'Do not panic. Remain calm.',
+      'Do not move the bitten limb. Keep it immobilized using a splint (e.g. piece of wood or bamboo) if it is a hand or leg.',
+      'Wash the wound gently with soap and clean water.',
+      'Do not apply any tight tourniquet or bandage (this can block blood flow and lead to limb damage).',
+      'Do not cut the wound to bleed it or waste time visiting a traditional healer.'
+    ];
+
+    final firstAidSteps = lang.isBengali ? result.firstAidBn : firstAidStepsEn;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,17 +88,17 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                   children: [
                     // Action Required Banner
                     if (isUrgent) ...[
-                      _buildActionBanner(),
+                      _buildActionBanner(lang),
                       const SizedBox(height: 16),
                     ],
                     // Risk Score
-                    _buildRiskScoreGauge(result),
+                    _buildRiskScoreGauge(result, riskLevelText, riskDescriptionText, lang),
                     const SizedBox(height: 16),
                     // Case Details
-                    _buildSymptomSummary(result),
+                    _buildSymptomSummary(result, lang),
                     const SizedBox(height: 16),
                     // First Aid Protocol
-                    _buildFirstAidProtocol(result),
+                    _buildFirstAidProtocol(firstAidSteps, lang),
                   ],
                 ),
               ),
@@ -66,7 +106,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildEmergencyCTA(context),
+      bottomNavigationBar: _buildEmergencyCTA(context, lang),
     );
   }
 
@@ -106,12 +146,13 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const BilingualLanguageToggle(),
         ],
       ),
     );
   }
 
-  Widget _buildActionBanner() {
+  Widget _buildActionBanner(AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -141,9 +182,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'অবিলম্বে চিকিৎসা নিন',
-                  style: TextStyle(
+                Text(
+                  lang.t('অবিলম্বে চিকিৎসা নিন', 'Get Urgent Medical Care'),
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: AppColors.error,
@@ -151,8 +192,11 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'রোগীকে দ্রুততম সময়ের মধ্যে নিকটস্থ হাসপাতালে স্থানান্তর করা প্রয়োজন।',
-                  style: TextStyle(
+                  lang.t(
+                    'রোগীকে দ্রুততম সময়ের মধ্যে নিকটস্থ হাসপাতালে স্থানান্তর করা প্রয়োজন।', 
+                    'The patient must be transferred to the nearest hospital as quickly as possible.'
+                  ),
+                  style: const TextStyle(
                     fontSize: 16,
                     color: AppColors.onErrorContainer,
                   ),
@@ -165,7 +209,11 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRiskScoreGauge(dynamic result) {
+  Widget _buildRiskScoreGauge(dynamic result, String riskLevelText, String riskDescriptionText, AppLanguage lang) {
+    final formattedPercentage = lang.isBengali 
+        ? _toBengaliDigits('${result.riskPercentage.toStringAsFixed(0)}%')
+        : '${result.riskPercentage.toStringAsFixed(0)}%';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -183,8 +231,8 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
       child: Column(
         children: [
           Text(
-            'ঝুঁকি মূল্যায়ন',
-            style: TextStyle(
+            lang.t('ঝুঁকি মূল্যায়ন', 'Risk Assessment'),
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: AppColors.secondary,
@@ -200,7 +248,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
               alignment: Alignment.center,
               children: [
                 // Background circle
-                SizedBox(
+                const SizedBox(
                   width: 192,
                   height: 192,
                   child: CircularProgressIndicator(
@@ -227,7 +275,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${result.riskPercentage.toStringAsFixed(0)}%',
+                      formattedPercentage,
                       style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w700,
@@ -241,7 +289,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            result.riskLevel,
+            riskLevelText,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -250,8 +298,8 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            result.riskDescription,
-            style: TextStyle(
+            riskDescriptionText,
+            style: const TextStyle(
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
             ),
@@ -262,7 +310,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSymptomSummary(dynamic result) {
+  Widget _buildSymptomSummary(dynamic result, AppLanguage lang) {
+    final List<dynamic> reasons = result.observedReasons;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -283,9 +333,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'লক্ষণ ও পর্যবেক্ষণ রিপোর্ট',
-                style: TextStyle(
+              Text(
+                lang.t('লক্ষণ ও পর্যবেক্ষণ রিপোর্ট', 'Symptoms & Observation Report'),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
@@ -295,13 +345,13 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          if (result.observedReasons.isEmpty)
-            const Text(
-              'কোনো লক্ষণ চিহ্নিত করা হয়নি।',
-              style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+          if (reasons.isEmpty)
+            Text(
+              lang.t('কোনো লক্ষণ চিহ্নিত করা হয়নি।', 'No symptoms identified.'),
+              style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
             )
           else
-            ...result.observedReasons.map((reason) {
+            ...reasons.map((reason) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Container(
@@ -317,7 +367,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          reason,
+                          _translateReason(reason, lang),
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.onSurface,
@@ -334,7 +384,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFirstAidProtocol(dynamic result) {
+  Widget _buildFirstAidProtocol(List<String> firstAidSteps, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -355,9 +405,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'প্রাথমিক করণীয়',
-                style: TextStyle(
+              Text(
+                lang.t('প্রাথমিক করণীয়', 'First Aid Guidelines'),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
@@ -369,9 +419,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'সক্রিয়',
-                  style: TextStyle(
+                child: Text(
+                  lang.t('সক্রিয়', 'Active'),
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -382,10 +432,10 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ...result.firstAidBn.asMap().entries.map((entry) {
+          ...firstAidSteps.asMap().entries.map((entry) {
             final idx = entry.key;
             final step = entry.value;
-            final isWarning = step.contains('ওঝা') || step.contains('কেটে') || step.contains('বাঁধুন');
+            final isWarning = step.contains('ওঝা') || step.contains('কেটে') || step.contains('টর্নিকেট') || step.contains('healer') || step.contains('tourniquet') || step.contains('cut');
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
@@ -440,7 +490,7 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmergencyCTA(BuildContext context) {
+  Widget _buildEmergencyCTA(BuildContext context, AppLanguage lang) {
     return SafeArea(
       top: false,
       child: Container(
@@ -474,8 +524,8 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'জাতীয় হেল্পলাইন',
-                      style: TextStyle(
+                      lang.t('জাতীয় হেল্পলাইন', 'National Helpline'),
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: AppColors.onTertiaryContainer,
@@ -483,9 +533,9 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      '৯৯৯ এ কল করুন',
-                      style: TextStyle(
+                    Text(
+                      lang.t('৯৯৯ এ কল করুন', 'Call 999'),
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -507,5 +557,58 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _translateReason(String reason, AppLanguage lang) {
+    if (lang == AppLanguage.bengali) return reason;
+    
+    // Replace growing/stable status
+    String status = '';
+    String base = reason;
+    if (reason.endsWith(' (ক্রমবর্ধমান)')) {
+      status = ' (Progressing)';
+      base = reason.replaceAll(' (ক্রমবর্ধমান)', '');
+    } else if (reason.endsWith(' (স্থিতিশীল)')) {
+      status = ' (Stable)';
+      base = reason.replaceAll(' (স্থিতিশীল)', '');
+    }
+
+    // Map base symptoms
+    final Map<String, String> symptomTranslations = {
+      'তীব্র ব্যথা': 'Severe pain',
+      'ফোলাভাব': 'Swelling',
+      'লালচে ভাব': 'Redness',
+      'রক্তপাত': 'Bleeding',
+      'ক্ষতচিহ্ন/কালশিটে': 'Bruising',
+      'চোখের পাতা ঝুলে পড়া': 'Drooping eyelids',
+      'কথা বলতে সমস্যা': 'Difficulty speaking',
+      'শ্বাসকষ্ট': 'Difficulty breathing',
+      'কামড়ের ৩০ মিনিটের মধ্যে লক্ষণসমূহ দ্রুত বৃদ্ধি পাচ্ছে': 'Symptoms rapidly increasing within 30 minutes of bite',
+      'কামড়ের পর দীর্ঘ সময় (>৬ ঘণ্টা) পার হয়েছে এবং লক্ষণ বিদ্যমান': 'Long time elapsed (>6 hours) since bite with active symptoms',
+      'চোখের পাতা ঝুলে পড়া (স্নায়বিক)': 'Drooping eyelids (Neurological)',
+      'কথা বলতে সমস্যা (স্নায়বিক)': 'Difficulty speaking (Neurological)',
+      'গিলতে সমস্যা (স্নায়বিক)': 'Difficulty swallowing (Neurological)',
+      'অস্বাভাবিক শারীরিক দুর্বলতা': 'Unusual physical weakness',
+      'শ্বাসকষ্ট হওয়া (জীবন-ঝুঁকি)': 'Difficulty breathing (Life-threatening)',
+      'কামড়ের ক্ষতস্থান থেকে রক্তপাত': 'Bleeding from bite wound',
+      'নাক বা মাড়ি থেকে রক্তপাত': 'Bleeding from nose or gums',
+      'ত্বকে অস্বাভাবিক কালশিটে': 'Unusual bruising on skin',
+      'মাথা ঘোরানো': 'Dizziness',
+      'অজ্ঞান হয়ে যাওয়া (জীবন-ঝুঁকি)': 'Fainting (Life-threatening)',
+      'বমি হওয়া': 'Vomiting',
+      'গাঢ় রঙের প্রস্রাব': 'Dark urine',
+    };
+
+    return (symptomTranslations[base] ?? base) + status;
+  }
+
+  String _toBengaliDigits(String input) {
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    String result = input;
+    for (int i = 0; i < english.length; i++) {
+      result = result.replaceAll(english[i], bengali[i]);
+    }
+    return result;
   }
 }

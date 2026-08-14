@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
 import '../providers/triage_provider.dart';
 
@@ -24,53 +25,55 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(triageProvider);
+    final lang = ref.watch(localeProvider);
 
     final List<Map<String, dynamic>> symptomList = [
       {
         'key': 'hood_seen',
-        'title': 'সাপের মাথায় ফণা দেখা গেছে',
-        'description': 'যেমন: গোখরা বা কেউটে সাপের মতো ফণা তোলা।',
+        'title': lang.t('সাপের মাথায় ফণা দেখা গেছে', 'Snake raising head hood'),
+        'description': lang.t('যেমন: গোখরা বা কেউটে সাপের মতো ফণা তোলা।', 'Example: Cobra or Krait raising a hood posture.'),
         'icon': Icons.visibility,
       },
       {
         'key': 'two_punctures',
-        'title': 'কামড়ের স্থানে দুটি সুনির্দিষ্ট গভীর ক্ষত',
-        'description': 'বিষদাঁতের কারণে হওয়া দুটি ছোট ফুটো বা রক্তবিন্দু।',
+        'title': lang.t('কামড়ের স্থানে দুটি সুনির্দিষ্ট গভীর ক্ষত', 'Two distinct fang puncture wounds'),
+        'description': lang.t('বিষদাঁতের কারণে হওয়া দুটি ছোট ফুটো বা রক্তবিন্দু।', 'Two small punctures or blood spots from fangs.'),
         'icon': Icons.colorize,
       },
       {
         'key': 'eyelid_droop',
-        'title': 'চোখের পাতা ঝুলে পড়া বা ঝাপসা দেখা',
-        'description': 'চোখ মেলতে কষ্ট হওয়া বা একটি জিনিস দুটি দেখা (দ্বি-দৃষ্টি)।',
+        'title': lang.t('চোখের পাতা ঝুলে পড়া বা ঝাপসা দেখা', 'Drooping eyelids or blurred vision'),
+        'description': lang.t('চোখ মেলতে কষ্ট হওয়া বা একটি জিনিস দুটি দেখা (দ্বি-দৃষ্টি)।', 'Difficulty opening eyes or double vision (diplopia).'),
         'icon': Icons.remove_red_eye_outlined,
       },
       {
         'key': 'difficulty_breathing',
-        'title': 'শ্বাসকষ্ট বা গিলতে/কথা বলতে সমস্যা',
-        'description': 'গলায় কিছু আটকে থাকার অনুভূতি বা দম বন্ধ হয়ে আসা।',
+        'title': lang.t('শ্বাসকষ্ট বা গিলতে/কথা বলতে সমস্যা', 'Difficulty breathing or swallowing/speaking'),
+        'description': lang.t('গলায় কিছু আটকে থাকার অনুভূতি বা দম বন্ধ হয়ে আসা।', 'Feeling of throat obstruction or suffocation.'),
         'icon': Icons.air,
       },
       {
         'key': 'bleeding_wound',
-        'title': ' ক্ষতস্থান থেকে অবিরাম রক্তক্ষরণ',
-        'description': 'রক্ত জমাট বাঁধছে না এবং অনবরত চুইয়ে রক্ত পড়ছে।',
+        'title': lang.t('ক্ষতস্থান থেকে অবিরাম রক্তক্ষরণ', 'Continuous bleeding from the wound'),
+        'description': lang.t('রক্ত জমাট বাঁধছে না এবং অনবরত চুইয়ে রক্ত পড়ছে।', 'Blood not clotting and continuously oozing from the bite.'),
         'icon': Icons.opacity,
       },
       {
         'key': 'severe_pain',
-        'title': 'কামড়ের স্থানে তীব্র জ্বালাপোড়া বা ব্যথা',
-        'description': 'কামড় খাওয়ার সঙ্গে সঙ্গে মারাত্মক যন্ত্রণা শুরু হওয়া।',
+        'title': lang.t('কামড়ের স্থানে তীব্র জ্বালাপোড়া বা ব্যথা', 'Severe pain or burning at the bite site'),
+        'description': lang.t('কামড় খাওয়ার সঙ্গে সঙ্গে মারাত্মক যন্ত্রণা শুরু হওয়া।', 'Intense pain starting immediately after the bite.'),
         'icon': Icons.flash_on,
       },
       {
         'key': 'swelling',
-        'title': 'কামড়ের চারপাশ দ্রুত ফুলে লাল হওয়া',
-        'description': 'ক্ষতস্থান এবং তার আশেপাশের অংশ কালচে হয়ে ফুলে যাওয়া।',
+        'title': lang.t('কামড়ের চারপাশ দ্রুত ফুলে লাল হওয়া', 'Rapid swelling and redness around the bite'),
+        'description': lang.t('ক্ষতস্থান এবং তার আশেপাশের অংশ কালচে হয়ে ফুলে যাওয়া।', 'The bite site and surrounding area swelling and turning dark.'),
         'icon': Icons.report_problem_outlined,
       },
     ];
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
@@ -82,7 +85,7 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
             }
           },
         ),
-        title: const Text('লক্ষণ পরীক্ষা তালিকা'),
+        title: Text(lang.t('লক্ষণ পরীক্ষা তালিকা', 'Symptom Checklist')),
       ),
       body: Column(
         children: [
@@ -98,14 +101,17 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
                       color: AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: AppColors.primary),
-                        SizedBox(width: 12),
+                        const Icon(Icons.info_outline, color: AppColors.primary),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'সাপের বিবরণ এবং রোগীর বর্তমান শারীরিক লক্ষণগুলোর পাশে টিক চিহ্ন দিন। সঠিক মূল্যায়নের জন্য প্রতিটি তথ্য গুরুত্ব বহন করে।',
-                            style: TextStyle(
+                            lang.t(
+                              'সাপের বিবরণ এবং রোগীর বর্তমান শারীরিক লক্ষণগুলোর পাশে টিক চিহ্ন দিন। সঠিক মূল্যায়নের জন্য প্রতিটি তথ্য গুরুত্ব বহন করে।', 
+                              'Check the boxes next to the snake description and active symptoms. Each detail is critical for accurate assessment.'
+                            ),
+                            style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.primaryDark,
                             ),
@@ -115,9 +121,9 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'লক্ষণ সমূহ নির্বাচন করুন',
-                    style: TextStyle(
+                  Text(
+                    lang.t('লক্ষণ সমূহ নির্বাচন করুন', 'Select Symptoms'),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
@@ -221,7 +227,7 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
                   ref.read(triageProvider.notifier).submitChecklist();
                   context.pushReplacement('/triage-result');
                 },
-                child: const Text('তাত্ক্ষণিক ফলাফল দেখুন'),
+                child: Text(lang.t('তাত্ক্ষণিক ফলাফল দেখুন', 'View Instant Results')),
               ),
             ),
           ),

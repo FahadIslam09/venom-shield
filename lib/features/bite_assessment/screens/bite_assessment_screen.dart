@@ -1,10 +1,11 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../providers/bite_assessment_provider.dart';
 
 class BiteAssessmentScreen extends ConsumerStatefulWidget {
@@ -16,7 +17,6 @@ class BiteAssessmentScreen extends ConsumerStatefulWidget {
 
 class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
   final ScrollController _scrollController = ScrollController();
-  int _currentStep = 1;
 
   @override
   void initState() {
@@ -27,34 +27,30 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = ref.watch(biteAssessmentProvider);
     final notifier = ref.read(biteAssessmentProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     final localSymptoms = {
-      'swelling': 'ফোলাভাব',
-      'severe_pain': 'তীব্র ব্যথা',
-      'wound_bleeding': 'অবিরাম রক্তপাত',
-      'skin_change': 'টিস্যু নেক্রোসিস',
+      'pain': lang.t('তীব্র ব্যথা', 'Severe pain'),
+      'swelling': lang.t('ফোলাভাব', 'Swelling'),
+      'redness': lang.t('লালচে ভাব', 'Redness'),
+      'bleeding': lang.t('রক্তপাত', 'Bleeding'),
+      'bruising': lang.t('ক্ষতচিহ্ন/কালশিটে', 'Bruising'),
     };
 
     final neuroSymptoms = {
-      'drooping_eyelids': 'চোখের পাতা ঝুলে যাচ্ছে',
-      'speech_difficulty': 'কথা বলতে জড়তা',
-      'breathing_difficulty': 'শ্বাসকষ্ট',
+      'eyelid_droop': lang.t('চোখের পাতা ঝুলে পড়া', 'Drooping eyelids'),
+      'speech_difficulty': lang.t('কথা বলতে সমস্যা', 'Difficulty speaking'),
+      'breathing_difficulty': lang.t('呼吸困難 / শ্বাসকষ্ট', 'Difficulty breathing'),
     };
 
     final timeOptions = [
-      '< ১৫ মি',
-      '১৫ - ৩০ মি',
-      '৩০ - ৬০ মি',
-      '> ১ ঘণ্টা',
+      lang.t('< ১৫ মি', '< 15 mins'),
+      lang.t('১৫ - ৩০ মি', '15 - 30 mins'),
+      lang.t('৩০ - ৬০ মি', '30 - 60 mins'),
+      lang.t('> ১ ঘণ্টা', '> 1 hour'),
     ];
 
     return Scaffold(
@@ -89,8 +85,8 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              'অফলাইন',
-              style: TextStyle(
+              lang.t('অফলাইন', 'Offline'),
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurfaceVariant,
@@ -119,15 +115,15 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                     if (hasActiveSymptom) {
                       currentStep = 3;
                     }
-                    return _buildProgressIndicator(currentStep);
+                    return _buildProgressIndicator(currentStep, lang);
                   }
                 ),
                 const SizedBox(height: 32),
 
                 // Section Header
-                const Text(
-                  'কামড় মূল্যায়ন',
-                  style: TextStyle(
+                Text(
+                  lang.t('কামড় মূল্যায়ন', 'Bite Assessment'),
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w600,
                     color: AppColors.onBackground,
@@ -135,8 +131,11 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'এআই বিশ্লেষণের জন্য স্থানীয় এবং পদ্ধতিগত অগ্রগতি নথিভুক্ত করুন।',
-                  style: TextStyle(
+                  lang.t(
+                    'এআই বিশ্লেষণের জন্য স্থানীয় এবং পদ্ধতিগত অগ্রগতি নথিভুক্ত করুন।', 
+                    'Document local and systemic progression for AI analysis.'
+                  ),
+                  style: const TextStyle(
                     fontSize: 16,
                     color: AppColors.onSurfaceVariant,
                   ),
@@ -152,9 +151,9 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                         children: [
                           const Icon(Icons.camera_alt, color: AppColors.secondary, size: 20),
                           const SizedBox(width: 8),
-                          const Text(
-                            'ক্ষতস্থানের ছবি (ঐচ্ছিক)',
-                            style: TextStyle(
+                          Text(
+                            lang.t('ক্ষতস্থানের ছবি (ঐচ্ছিক)', 'Bite Wound Image (Optional)'),
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
                               color: AppColors.onSurface,
@@ -163,9 +162,12 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'ক্ষতস্থানের ছবি দিলে এআই ক্ষত পর্যবেক্ষণ করতে পারবে (যেমন: ফোলা বা রক্তপাত)।',
-                        style: TextStyle(
+                      Text(
+                        lang.t(
+                          'ক্ষতস্থানের ছবি দিলে এআই ক্ষত পর্যবেক্ষণ করতে পারবে (যেমন: ফোলা বা রক্তপাত)।', 
+                          'Providing a photo allows AI to observe wound details like swelling or active bleeding.'
+                        ),
+                        style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.onSurfaceVariant,
                         ),
@@ -198,9 +200,9 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'এআই পর্যবেক্ষণ:',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                                Text(
+                                  lang.t('এআই পর্যবেক্ষণ:', 'AI Observations:'),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
                                 ),
                                 const SizedBox(height: 4),
                                 ...state.aiObservations.map((obs) => Text('• $obs', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
@@ -215,7 +217,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                               child: OutlinedButton.icon(
                                 onPressed: () => notifier.pickImage(ImageSource.gallery),
                                 icon: const Icon(Icons.photo_library),
-                                label: const Text('গ্যালারি'),
+                                label: Text(lang.t('গ্যালারি', 'Gallery')),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -223,7 +225,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: () => notifier.pickImage(ImageSource.camera),
                                 icon: const Icon(Icons.photo_camera),
-                                label: const Text('ছবি তুলুন'),
+                                label: Text(lang.t('ছবি তুলুন', 'Take Photo')),
                               ),
                             ),
                           ],
@@ -243,9 +245,9 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                         children: [
                           const Icon(Icons.schedule, color: AppColors.secondary, size: 20),
                           const SizedBox(width: 8),
-                          const Text(
-                            'কামড়ের সময়',
-                            style: TextStyle(
+                          Text(
+                            lang.t('কামড়ের সময়', 'Time Since Bite'),
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
                               color: AppColors.onSurface,
@@ -269,27 +271,27 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                           return GestureDetector(
                             onTap: () => notifier.updateTimeSinceBite(idx),
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primaryContainer : AppColors.outlineVariant,
-                                  width: 1,
+                                duration: const Duration(milliseconds: 200),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerLowest,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primaryContainer : AppColors.outlineVariant,
+                                    width: 1,
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  timeOptions[idx],
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
-                                    letterSpacing: 0.05,
+                                child: Center(
+                                  child: Text(
+                                    timeOptions[idx],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: isSelected ? Colors.white : AppColors.onSurface,
+                                      letterSpacing: 0.05,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           );
                         },
                       ),
@@ -310,9 +312,9 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                             children: [
                               const Icon(Icons.visibility, color: AppColors.secondary, size: 20),
                               const SizedBox(width: 8),
-                              const Text(
-                                'স্থানীয় লক্ষণ',
-                                style: TextStyle(
+                              Text(
+                                lang.t('স্থানীয় লক্ষণ', 'Local Symptoms'),
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.onSurface,
@@ -328,8 +330,8 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                               border: Border.all(color: const Color(0xFFFDE68A), width: 1),
                             ),
                             child: Text(
-                              'স্থিতিশীল',
-                              style: TextStyle(
+                              lang.t('স্থিতিশীল', 'Stable'),
+                              style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFF92400E),
@@ -370,9 +372,9 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                             children: [
                               const Icon(Icons.psychology, color: AppColors.secondary, size: 20),
                               const SizedBox(width: 8),
-                              const Text(
-                                'স্নায়বিক লক্ষণ',
-                                style: TextStyle(
+                              Text(
+                                lang.t('স্নায়বিক লক্ষণ', 'Systemic Symptoms'),
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.onSurface,
@@ -403,8 +405,8 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'বাড়ছে',
-                                  style: TextStyle(
+                                  lang.t('বাড়ছে', 'Progressing'),
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.onErrorContainer,
@@ -442,7 +444,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                           notifier.clear();
                           context.pop();
                         },
-                        child: const Text('বাতিল করুন'),
+                        child: Text(lang.t('বাতিল করুন', 'Cancel')),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -452,12 +454,12 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                           notifier.calculateRisk();
                           context.push('/bite-assessment-result');
                         },
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('বিশ্লেষণ শুরু করুন'),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 18),
+                            Text(lang.t('বিশ্লেষণ শুরু করুন', 'Start Analysis')),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward, size: 18),
                           ],
                         ),
                       ),
@@ -482,23 +484,26 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.outlineVariant, width: 1),
                   ),
-                  child: const Column(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: AppColors.primaryContainer),
-                      SizedBox(height: 24),
+                      const CircularProgressIndicator(color: AppColors.primaryContainer),
+                      const SizedBox(height: 24),
                       Text(
-                        'এআই ক্ষতস্থান বিশ্লেষণ চলছে...',
-                        style: TextStyle(
+                        lang.t('এআই ক্ষতস্থান বিশ্লেষণ চলছে...', 'AI Wound Analysis in Progress...'),
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.onSurface,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        'ক্ষতের ফোলা বা কামড়ের দাগ পর্যবেক্ষণ করা হচ্ছে।',
-                        style: TextStyle(
+                        lang.t(
+                          'ক্ষতের ফোলা বা কামড়ের দাগ পর্যবেক্ষণ করা হচ্ছে।', 
+                          'Observing swelling or bite mark characteristics.'
+                        ),
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.onSurfaceVariant,
                         ),
@@ -514,24 +519,24 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
     );
   }
 
-  Widget _buildProgressIndicator(int currentStep) {
+  Widget _buildProgressIndicator(int currentStep, AppLanguage lang) {
     return Row(
       children: [
-        _buildStepCircle(1, 'রোগী', currentStep >= 1, currentStep == 1),
+        _buildStepCircle(1, lang.t('রোগী', 'Patient'), currentStep >= 1, currentStep == 1),
         Expanded(
           child: Container(
             height: 2,
             color: currentStep >= 2 ? AppColors.primaryContainer : AppColors.outlineVariant,
           ),
         ),
-        _buildStepCircle(2, 'লক্ষণ', currentStep >= 2, currentStep == 2),
+        _buildStepCircle(2, lang.t('লক্ষণ', 'Symptoms'), currentStep >= 2, currentStep == 2),
         Expanded(
           child: Container(
             height: 2,
             color: currentStep >= 3 ? AppColors.primaryContainer : AppColors.outlineVariant,
           ),
         ),
-        _buildStepCircle(3, 'বিশ্লেষণ', currentStep >= 3, currentStep == 3),
+        _buildStepCircle(3, lang.t('বিশ্লেষণ', 'Analyze'), currentStep >= 3, currentStep == 3),
       ],
     );
   }
@@ -565,7 +570,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isActive ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+                color: isActive ? Colors.white : AppColors.onSurfaceVariant,
                 letterSpacing: 0.05,
               ),
             ),
@@ -621,8 +626,8 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
               ),
             ),
           Padding(
-            padding: EdgeInsets.only(
-              left: accentColor != null ? 16 : 16,
+            padding: const EdgeInsets.only(
+              left: 16,
               right: 16,
               top: 16,
               bottom: 16,
@@ -675,7 +680,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
@@ -723,7 +728,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,

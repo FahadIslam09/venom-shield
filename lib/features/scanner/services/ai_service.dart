@@ -98,7 +98,9 @@ Respond ONLY with a valid JSON object:
   "confidence": 0.0 to 1.0,
   "danger_level": "high", "medium", or "low",
   "first_aid_bn": ["3-4 first aid steps in Bangla"],
-  "description_bn": "2-3 sentence description in Bangla of the snake features you observed that led to identification"
+  "first_aid_en": ["3-4 first aid steps in English"],
+  "description_bn": "2-3 sentence description in Bangla of the snake features you observed that led to identification",
+  "description_en": "2-3 sentence description in English of the snake features you observed that led to identification"
 }
 
 If the image does not contain a snake, return JSON with species_bn: "সাপ শনাক্ত হয়নি", confidence: 0.0.

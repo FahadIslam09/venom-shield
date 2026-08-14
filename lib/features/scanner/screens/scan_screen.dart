@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
 import '../providers/scanner_provider.dart';
 import '../../triage/providers/triage_provider.dart';
@@ -42,6 +43,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final state = ref.watch(scannerProvider);
     final connectivity = ref.watch(connectivityProvider).value;
+    final lang = ref.watch(localeProvider);
 
     ref.listen<ScannerState>(scannerProvider, (previous, next) {
       final result = next.result;
@@ -56,7 +58,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(connectivity),
+            _buildTopBar(connectivity, lang),
             Expanded(
               child: Stack(
                 children: [
@@ -66,19 +68,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                       children: [
                         // Viewfinder Area
                         Expanded(
-                          child: _buildViewfinder(state),
+                          child: _buildViewfinder(state, lang),
                         ),
                         const SizedBox(height: 8),
                         // Controls
-                        _buildControls(state),
+                        _buildControls(state, lang),
                         const SizedBox(height: 16),
                         // Manual Entry Hook
-                        _buildManualEntryHook(),
+                        _buildManualEntryHook(lang),
                       ],
                     ),
                   ),
                   // Loading Overlay
-                  if (state.isScanning) _buildLoadingOverlay(),
+                  if (state.isScanning) _buildLoadingOverlay(lang),
                 ],
               ),
             ),
@@ -89,7 +91,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildTopBar(ConnectionStatus? connectivity) {
+  Widget _buildTopBar(ConnectionStatus? connectivity, AppLanguage lang) {
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -115,9 +117,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                 },
               ),
               const SizedBox(width: 8),
-              const Text(
-                'সাপের স্ক্যানার',
-                style: TextStyle(
+              Text(
+                lang.t('সাপের স্ক্যানার', 'Snake Scanner'),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
@@ -141,8 +143,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  connectivity == ConnectionStatus.offline ? 'অফলাইন' : 'অনলাইন',
-                  style: TextStyle(
+                  connectivity == ConnectionStatus.offline 
+                      ? lang.t('অফলাইন', 'Offline') 
+                      : lang.t('অনলাইন', 'Online'),
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.onSurfaceVariant,
@@ -157,7 +161,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildViewfinder(ScannerState state) {
+  Widget _buildViewfinder(ScannerState state, AppLanguage lang) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
@@ -179,7 +183,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
               ? (kIsWeb
                   ? Image.network(state.imagePath!, fit: BoxFit.cover, width: double.infinity)
                   : Image.file(File(state.imagePath!), fit: BoxFit.cover, width: double.infinity))
-              : _buildEmptyState(),
+              : _buildEmptyState(lang),
           // Corner Brackets (viewfinder)
           if (state.imagePath == null) ...[
             _buildCorner(Alignment.topLeft, isTop: true, isLeft: true),
@@ -190,13 +194,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
           // Metrics Overlay
           if (state.imagePath == null) _buildMetricsOverlay(),
           // Error State
-          if (state.errorMessage != null) _buildErrorOverlay(state),
+          if (state.errorMessage != null) _buildErrorOverlay(state, lang),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLanguage lang) {
     return Center(
       child: AnimatedBuilder(
         animation: _pulseController,
@@ -209,15 +213,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.center_focus_strong,
               size: 64,
               color: AppColors.outlineVariant,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'কোনো ছবি সিলেক্ট করা হয়নি',
-              style: TextStyle(
+            Text(
+              lang.t('কোনো ছবি সিলেক্ট করা হয়নি', 'No image selected'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: AppColors.onSurface,
@@ -225,8 +229,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
             ),
             const SizedBox(height: 4),
             Text(
-              'সাপের প্রজাতি শনাক্ত করতে একটি পরিষ্কার ছবি আপলোড করুন',
-              style: TextStyle(
+              lang.t('সাপের প্রজাতি শনাক্ত করতে একটি পরিষ্কার ছবি আপলোড করুন', 'Upload a clear photo to identify the snake species'),
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant,
               ),
@@ -301,7 +305,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
           const SizedBox(width: 8),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppColors.onSurface,
@@ -313,7 +317,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildErrorOverlay(ScannerState state) {
+  Widget _buildErrorOverlay(ScannerState state, AppLanguage lang) {
     return Positioned(
       bottom: 16,
       left: 16,
@@ -332,9 +336,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
               children: [
                 const Icon(Icons.error_outline, color: AppColors.error, size: 20),
                 const SizedBox(width: 8),
-                const Text(
-                  'ত্রুটি!',
-                  style: TextStyle(
+                Text(
+                  lang.t('ত্রুটি!', 'Error!'),
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.error,
@@ -359,9 +363,9 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                   color: AppColors.error,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'লক্ষণ তালিকা ব্যবহার করুন',
-                  style: TextStyle(
+                child: Text(
+                  lang.t('লক্ষণ তালিকা ব্যবহার করুন', 'Use Symptom Checklist'),
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -375,14 +379,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildControls(ScannerState state) {
+  Widget _buildControls(ScannerState state, AppLanguage lang) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Gallery Button
         _buildSecondaryButton(
           icon: Icons.photo_library,
-          label: 'গ্যালারি',
+          label: lang.t('গ্যালারি', 'Gallery'),
           onTap: () => ref.read(scannerProvider.notifier).scanImage(ImageSource.gallery),
         ),
         const SizedBox(width: 24),
@@ -394,7 +398,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
         // Flash Button
         _buildSecondaryButton(
           icon: Icons.flash_auto,
-          label: 'ফ্ল্যাশ',
+          label: lang.t('ফ্ল্যাশ', 'Flash'),
           onTap: () {},
         ),
       ],
@@ -425,7 +429,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: AppColors.onSurfaceVariant,
@@ -467,7 +471,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildManualEntryHook() {
+  Widget _buildManualEntryHook(AppLanguage lang) {
     return GestureDetector(
       onTap: () => context.pushReplacement('/bite-assessment'),
       child: Container(
@@ -500,8 +504,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'আমার কাছে সাপের ছবি নেই',
-                    style: TextStyle(
+                    lang.t('আমার কাছে সাপের ছবি নেই', 'I do not have a snake photo'),
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
@@ -510,8 +514,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'কামড়ের স্থান ও লক্ষণ মূল্যায়ন করুন',
-                    style: TextStyle(
+                    lang.t('কামড়ের স্থান ও লক্ষণ মূল্যায়ন করুন', 'Assess bite site and symptoms'),
+                    style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.onSurfaceVariant,
                     ),
@@ -526,7 +530,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildLoadingOverlay() {
+  Widget _buildLoadingOverlay(AppLanguage lang) {
     return Container(
       color: Colors.black.withOpacity(0.7),
       child: Center(
@@ -538,23 +542,26 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.outlineVariant, width: 1),
           ),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: AppColors.primaryContainer),
-              SizedBox(height: 24),
+              const CircularProgressIndicator(color: AppColors.primaryContainer),
+              const SizedBox(height: 24),
               Text(
-                'এআই বিশ্লেষণ চলছে...',
-                style: TextStyle(
+                lang.t('এআই বিশ্লেষণ চলছে...', 'AI Analysis in Progress...'),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                'সাপের প্রজাতি ও বিষাক্ততা যাচাই করা হচ্ছে। অনুগ্রহ করে অপেক্ষা করুন।',
-                style: TextStyle(
+                lang.t(
+                  'সাপের প্রজাতি ও বিষাক্ততা যাচাই করা হচ্ছে। অনুগ্রহ করে অপেক্ষা করুন।', 
+                  'Verifying snake species and toxicity. Please wait.'
+                ),
+                style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.onSurfaceVariant,
                 ),

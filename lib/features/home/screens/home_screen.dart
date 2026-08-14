@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../../hospital/providers/hospital_provider.dart';
 import '../providers/history_provider.dart';
 
@@ -19,16 +21,118 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  void _showLanguageSelectionDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Column(
+              children: [
+                Icon(
+                  Icons.language,
+                  color: AppColors.primary,
+                  size: 40,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Choose your language\nভাষা নির্বাচন করুন',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      ref.read(localeProvider.notifier).setLanguage(AppLanguage.bengali);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      '🇧🇩 বাংলা',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      ref.read(localeProvider.notifier).setLanguage(AppLanguage.english);
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      '🇬🇧 English',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hospitalState = ref.watch(hospitalProvider);
     final historyState = ref.watch(historyProvider);
+    final lang = ref.watch(localeProvider);
+
+    final isFirst = ref.watch(localeProvider.notifier).isFirstLaunch;
+    if (isFirst) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLanguageSelectionDialog(context, ref);
+      });
+    }
 
     final inStockHospitals = hospitalState.hospitals
         .where((h) => h.antivenomStatus == 'in_stock' || h.antivenomStatus == 'limited')
         .toList();
     final nearestCount = inStockHospitals.length;
-    final nearestCountText = _toBengaliDigits('$nearestCount');
+    final nearestCountText = _formatNumber('$nearestCount', lang);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -45,16 +149,16 @@ class HomeScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Emergency Protocol Banner
-                    _buildEmergencyBanner(context),
+                    _buildEmergencyBanner(context, lang),
                     const SizedBox(height: 24),
                     // Dashboard Stats Row
-                    _buildStatsRow(historyState.assessments),
+                    _buildStatsRow(historyState.assessments, lang),
                     const SizedBox(height: 24),
                     // Bento Grid
-                    _buildBentoGrid(context, historyState.assessments, nearestCount, nearestCountText),
+                    _buildBentoGrid(context, historyState.assessments, nearestCount, nearestCountText, lang),
                     const SizedBox(height: 24),
                     // Assessment History Log
-                    _buildHistoryList(historyState),
+                    _buildHistoryList(historyState, lang),
                   ],
                 ),
               ),
@@ -93,12 +197,13 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const BilingualLanguageToggle(),
         ],
       ),
     );
   }
 
-  Widget _buildEmergencyBanner(BuildContext context) {
+  Widget _buildEmergencyBanner(BuildContext context, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -120,18 +225,18 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'জরুরী প্রটোকল',
-                  style: TextStyle(
+                Text(
+                  lang.t('জরুরী প্রটোকল', 'Emergency Protocol'),
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'জাতীয় হেল্পলাইন - দ্রুত প্রতিক্রিয়া',
-                  style: TextStyle(
+                Text(
+                  lang.t('জাতীয় হেল্পলাইন - দ্রুত প্রতিক্রিয়া', 'National Helpline - Rapid Response'),
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.onTertiaryContainer,
@@ -150,13 +255,13 @@ class HomeScreen extends ConsumerWidget {
                 color: AppColors.error,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.phone_in_talk, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    'জরুরী কল',
-                    style: TextStyle(
+                    lang.t('জরুরী কল', 'Emergency Call'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -171,16 +276,16 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsRow(List<Map<String, dynamic>> history) {
+  Widget _buildStatsRow(List<Map<String, dynamic>> history, AppLanguage lang) {
     final total = history.length;
-    final highRisk = history.where((a) => a['risk_level'] == 'উচ্চ ঝুঁকি' || a['risk_level'] == 'অত্যন্ত উচ্চ ঝুঁকি' || a['venomous'] == 1).length;
+    final highRisk = history.where((a) => a['risk_level'] == 'উচ্চ ঝুঁকি' || a['risk_level'] == 'High Risk' || a['risk_level'] == 'অত্যন্ত উচ্চ ঝুঁকি' || a['venomous'] == 1).length;
     
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
-            title: 'মোট মূল্যায়ন',
-            value: _toBengaliDigits('$total'),
+            title: lang.t('মোট মূল্যায়ন', 'Total Assessments'),
+            value: _formatNumber('$total', lang),
             icon: Icons.analytics_outlined,
             color: AppColors.primary,
           ),
@@ -188,8 +293,8 @@ class HomeScreen extends ConsumerWidget {
         const SizedBox(width: 16),
         Expanded(
           child: _buildStatCard(
-            title: 'উচ্চ ঝুঁকি কেস',
-            value: _toBengaliDigits('$highRisk'),
+            title: lang.t('উচ্চ ঝুঁকি কেস', 'High Risk Cases'),
+            value: _formatNumber('$highRisk', lang),
             icon: Icons.gpp_maybe_outlined,
             color: AppColors.error,
           ),
@@ -229,38 +334,42 @@ class HomeScreen extends ConsumerWidget {
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: color,
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBentoGrid(BuildContext context, List<Map<String, dynamic>> history, int nearestCount, String nearestCountText) {
+  Widget _buildBentoGrid(BuildContext context, List<Map<String, dynamic>> history, int nearestCount, String nearestCountText, AppLanguage lang) {
     return Column(
       children: [
         // Hero Card: Quick Scan
-        _buildQuickScanCard(context),
+        _buildQuickScanCard(context, lang),
         const SizedBox(height: 16),
         // Side Cards Row
         IntrinsicHeight(
@@ -268,11 +377,11 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: _buildSymptomLogCard(context),
+                child: _buildSymptomLogCard(context, lang),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildHospitalRadarCard(context, nearestCount, nearestCountText),
+                child: _buildHospitalRadarCard(context, nearestCount, nearestCountText, lang),
               ),
             ],
           ),
@@ -281,7 +390,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickScanCard(BuildContext context) {
+  Widget _buildQuickScanCard(BuildContext context, AppLanguage lang) {
     return GestureDetector(
       onTap: () => context.push('/scan'),
       child: Container(
@@ -310,9 +419,9 @@ class HomeScreen extends ConsumerWidget {
                     color: AppColors.primaryContainer,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: const Text(
-                    'এআই সক্রিয়',
-                    style: TextStyle(
+                  child: Text(
+                    lang.t('এআই সক্রিয়', 'AI Active'),
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: AppColors.onPrimaryContainer,
@@ -324,18 +433,18 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              'দ্রুত স্ক্যান',
-              style: TextStyle(
+            Text(
+              lang.t('দ্রুত স্ক্যান', 'Quick Scan'),
+              style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'সাপের কামড়ের চিহ্ন বা ধরণ তাৎক্ষণিকভাবে বিশ্লেষণ করুন।',
-              style: TextStyle(
+            Text(
+              lang.t('সাপের কামড়ের চিহ্ন বা ধরণ তাৎক্ষণিকভাবে বিশ্লেষণ করুন।', 'Instantly analyze snake bite marks or patterns.'),
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant,
                 height: 1.5,
@@ -348,14 +457,14 @@ class HomeScreen extends ConsumerWidget {
                 color: AppColors.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.document_scanner, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.document_scanner, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    'স্ক্যান শুরু করুন',
-                    style: TextStyle(
+                    lang.t('স্ক্যান শুরু করুন', 'Start Scan'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -370,8 +479,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSymptomLogCard(BuildContext context) {
-    const List<String> tags = ['ফণা তোলা', 'ফোলাভাব', 'তীব্র ব্যথা'];
+  Widget _buildSymptomLogCard(BuildContext context, AppLanguage lang) {
+    final List<String> tagsBn = ['ফণা তোলা', 'ফোলাভাব', 'তীব্র ব্যথা'];
+    final List<String> tagsEn = ['Hood Raised', 'Swelling', 'Severe Pain'];
 
     return GestureDetector(
       onTap: () => context.push('/triage-checklist'),
@@ -392,14 +502,14 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.assignment, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.assignment, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'লক্ষণ তালিকা',
-                  style: TextStyle(
-                    fontSize: 20,
+                  lang.t('লক্ষণ তালিকা', 'Checklist'),
+                  style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -407,10 +517,10 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'ভাইটাল সাইন এবং স্নায়বিক লক্ষণগুলো রেকর্ড করুন।',
-              style: TextStyle(
-                fontSize: 14,
+            Text(
+              lang.t('ভাইটাল সাইন এবং স্নায়বিক লক্ষণগুলো রেকর্ড করুন।', 'Record vital signs and neurological symptoms.'),
+              style: const TextStyle(
+                fontSize: 12,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -418,7 +528,9 @@ class HomeScreen extends ConsumerWidget {
             Wrap(
               spacing: 8,
               runSpacing: 4,
-              children: tags.take(3).map((t) => _buildTag(t)).toList(),
+              children: List.generate(3, (index) {
+                return _buildTag(lang.t(tagsBn[index], tagsEn[index]));
+              }),
             ),
           ],
         ),
@@ -426,7 +538,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHospitalRadarCard(BuildContext context, int nearestCount, String nearestCountText) {
+  Widget _buildHospitalRadarCard(BuildContext context, int nearestCount, String nearestCountText, AppLanguage lang) {
     return GestureDetector(
       onTap: () => context.push('/hospital-radar'),
       child: Container(
@@ -446,14 +558,14 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.local_hospital, color: AppColors.primary, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.local_hospital, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'হাসপাতাল রাডার',
-                  style: TextStyle(
-                    fontSize: 20,
+                  lang.t('হাসপাতাল রাডার', 'Hospital Radar'),
+                  style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -461,10 +573,10 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'নিকটস্থ অ্যান্টি-ভেনম মজুদ কেন্দ্রগুলো খুঁজুন।',
-              style: TextStyle(
-                fontSize: 14,
+            Text(
+              lang.t('নিকটস্থ অ্যান্টি-ভেনম মজুদ কেন্দ্রগুলো খুঁজুন।', 'Locate nearest anti-venom stock centers.'),
+              style: const TextStyle(
+                fontSize: 12,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -472,26 +584,34 @@ class HomeScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      nearestCount > 0 ? Icons.check_circle : Icons.warning,
-                      color: nearestCount > 0 ? AppColors.primary : AppColors.error,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      nearestCount > 0 ? '$nearestCountTextটি নিকটতম মজুদ' : 'কোনো মজুদ নেই',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        nearestCount > 0 ? Icons.check_circle : Icons.warning,
                         color: nearestCount > 0 ? AppColors.primary : AppColors.error,
-                        letterSpacing: 0.08,
+                        size: 16,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          nearestCount > 0 
+                              ? lang.t('$nearestCountTextটি নিকটতম মজুদ', '$nearestCount nearest stock') 
+                              : lang.t('কোনো মজুদ নেই', 'No stock available'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: nearestCount > 0 ? AppColors.primary : AppColors.error,
+                            letterSpacing: 0.05,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Icon(Icons.arrow_forward, color: AppColors.onSurfaceVariant, size: 20),
+                const Icon(Icons.arrow_forward, color: AppColors.onSurfaceVariant, size: 16),
               ],
             ),
           ],
@@ -511,7 +631,7 @@ class HomeScreen extends ConsumerWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w500,
           color: AppColors.onSurface,
           letterSpacing: 0.05,
@@ -520,9 +640,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // Shared bottom nav is used
-
-  Widget _buildHistoryList(HistoryState state) {
+  Widget _buildHistoryList(HistoryState state, AppLanguage lang) {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primaryContainer));
     }
@@ -532,9 +650,9 @@ class HomeScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'সাম্প্রতিক মূল্যায়ন ইতিহাস',
-          style: TextStyle(
+        Text(
+          lang.t('সাম্প্রতিক মূল্যায়ন ইতিহাস', 'Recent Assessment History'),
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: AppColors.primary,
@@ -550,10 +668,10 @@ class HomeScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.outlineVariant),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'কোনো পূর্ববর্তী মূল্যায়ন পাওয়া যায়নি।',
-                style: TextStyle(color: AppColors.textSecondary),
+                lang.t('কোনো পূর্ববর্তী মূল্যায়ন পাওয়া যায়নি।', 'No previous assessments found.'),
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
             ),
           )
@@ -569,6 +687,19 @@ class HomeScreen extends ConsumerWidget {
               final date = DateTime.tryParse(item['timestamp'] ?? '') ?? DateTime.now();
               final dateStr = '${date.day}/${date.month}/${date.year}';
               
+              // Map types and risk levels
+              final rawType = item['type'] ?? 'Assessment';
+              final String typeStr = rawType == 'সাপ সনাক্তকরণ' || rawType == 'Snake Identification'
+                  ? lang.t('সাপ সনাক্তকরণ', 'Snake Identification')
+                  : (rawType == 'লক্ষণ মূল্যায়ন' || rawType == 'Symptom Assessment'
+                      ? lang.t('লক্ষণ মূল্যায়ন', 'Symptom Assessment')
+                      : lang.t('ক্ষত মূল্যায়ন', 'Bite Assessment'));
+
+              final rawRisk = item['risk_level'] ?? 'Low Risk';
+              final String riskStr = rawRisk == 'উচ্চ ঝুঁকি' || rawRisk == 'High Risk'
+                  ? lang.t('উচ্চ ঝুঁকি', 'High Risk')
+                  : lang.t('কম ঝুঁকি', 'Low Risk');
+
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -583,7 +714,7 @@ class HomeScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${item['type'] ?? 'মূল্যায়ন'} - ${item['risk_level'] ?? 'কম ঝুঁকি'}',
+                          '$typeStr - $riskStr',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -592,7 +723,10 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'তারিখ: ${_toBengaliDigits(dateStr)} • ঝুঁকি: ${_toBengaliDigits(item['risk_percentage'].toStringAsFixed(0))}%',
+                          lang.t(
+                            'তারিখ: ${_toBengaliDigits(dateStr)} • ঝুঁকি: ${_toBengaliDigits(item['risk_percentage'].toStringAsFixed(0))}%', 
+                            'Date: $dateStr • Risk: ${item['risk_percentage'].toStringAsFixed(0)}%'
+                          ),
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -611,6 +745,13 @@ class HomeScreen extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  String _formatNumber(String input, AppLanguage lang) {
+    if (lang == AppLanguage.bengali) {
+      return _toBengaliDigits(input);
+    }
+    return input;
   }
 
   String _toBengaliDigits(String input) {

@@ -6,7 +6,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../providers/hospital_provider.dart';
 import '../models/hospital.dart';
 
@@ -20,6 +22,8 @@ class HospitalRadarScreen extends ConsumerStatefulWidget {
 class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   bool _isMapView = false;
   final MapController _mapController = MapController();
+  final List<String> _selectedStockStatuses = ['in_stock', 'limited', 'out_of_stock'];
+  final List<String> _selectedHospitalTypes = ['medical_college', 'district', 'upazila', 'general'];
 
   Future<void> _makeCall(String phoneNumber) async {
     final Uri url = Uri(scheme: 'tel', path: phoneNumber);
@@ -38,7 +42,12 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(hospitalProvider);
-    final filteredHospitals = ref.read(hospitalProvider.notifier).getFilteredHospitals();
+    final rawFilteredHospitals = ref.read(hospitalProvider.notifier).getFilteredHospitals();
+    final filteredHospitals = rawFilteredHospitals.where((h) {
+      if (!_selectedStockStatuses.contains(h.antivenomStatus)) return false;
+      if (!_selectedHospitalTypes.contains(h.type)) return false;
+      return true;
+    }).toList();
 
     final LatLng initialCenter = state.userPosition != null
         ? LatLng(state.userPosition!.latitude, state.userPosition!.longitude)
@@ -103,6 +112,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
               ),
             ],
           ),
+          const BilingualLanguageToggle(),
         ],
       ),
     );
@@ -124,6 +134,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   }
 
   Widget _buildSearchFilter(HospitalState state) {
+    final lang = ref.watch(localeProvider);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -138,7 +149,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
           TextField(
             onChanged: (val) => ref.read(hospitalProvider.notifier).updateSearchQuery(val),
             decoration: InputDecoration(
-              hintText: 'হাসপাতাল বা উপজেলা খুঁজুন...',
+              hintText: lang.t('হাসপাতাল বা উপজেলা খুঁজুন...', 'Search hospitals or sub-districts...'),
               prefixIcon: const Icon(Icons.search, color: AppColors.onSurfaceVariant),
               filled: true,
               fillColor: AppColors.surface,
@@ -163,8 +174,8 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'শুধুমাত্র স্টক আছে এমন হাসপাতাল',
-                style: TextStyle(
+                lang.t('শুধুমাত্র স্টক আছে এমন হাসপাতাল', 'Available stock only'),
+                style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.onSurface,
                 ),
@@ -204,7 +215,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'তালিকা',
+                          lang.t('তালিকা', 'List'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -240,7 +251,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'ম্যাপ',
+                          lang.t('ম্যাপ', 'Map'),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -260,11 +271,12 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   }
 
   Widget _buildListView(List<Hospital> hospitals, HospitalState state) {
+    final lang = ref.watch(localeProvider);
     if (hospitals.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'কোনো হাসপাতাল পাওয়া যায়নি।',
-          style: TextStyle(color: AppColors.onSurfaceVariant),
+          lang.t('কোনো হাসপাতাল পাওয়া যায়নি।', 'No hospitals found.'),
+          style: const TextStyle(color: AppColors.onSurfaceVariant),
         ),
       );
     }
@@ -279,28 +291,32 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'নিকটস্থ কেন্দ্রসমূহ',
-                style: TextStyle(
+              Text(
+                lang.t('নিকটস্থ কেন্দ্রসমূহ', 'Nearest Centers'),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: AppColors.onSurface,
                 ),
               ),
-              Row(
-                children: [
-                  const Icon(Icons.filter_list, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ফিল্টার',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                      letterSpacing: 0.08,
+              GestureDetector(
+                onTap: () => _showFilterSheet(context, lang),
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  children: [
+                    const Icon(Icons.filter_list, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      lang.t('ফিল্টার', 'Filter'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                        letterSpacing: 0.08,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -313,6 +329,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final hospital = hospitals[index];
+              final lang = ref.watch(localeProvider);
               String distStr = '';
               if (userPos != null) {
                 final double distance = _dbHelperCalculateDistance(
@@ -321,7 +338,9 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                   hospital.lat,
                   hospital.lng,
                 );
-                distStr = '${distance.toStringAsFixed(1)} কিমি দূরে';
+                distStr = lang.isBengali
+                    ? '${_toBengaliDigits(distance.toStringAsFixed(1))} কিমি দূরে'
+                    : '${distance.toStringAsFixed(1)} km away';
               }
 
               return _buildHospitalCard(hospital, distStr);
@@ -333,6 +352,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   }
 
   Widget _buildHospitalCard(Hospital hospital, String distStr) {
+    final lang = ref.watch(localeProvider);
     Color accentColor;
     switch (hospital.antivenomStatus) {
       case 'in_stock':
@@ -396,7 +416,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            hospital.nameBn,
+                            lang.t(hospital.nameBn, hospital.nameEn),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -416,7 +436,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                               const SizedBox(width: 4),
                               Text(
                                 distStr.isNotEmpty ? '$distStr • ${hospital.upazila}' : hospital.upazila,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.onSurfaceVariant,
                                 ),
@@ -441,14 +461,14 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                             color: AppColors.primaryContainer,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.navigation, size: 16, color: Colors.white),
-                              SizedBox(width: 4),
+                              const Icon(Icons.navigation, size: 16, color: Colors.white),
+                              const SizedBox(width: 4),
                               Text(
-                                'দিকনির্দেশনা',
-                                style: TextStyle(
+                                lang.t('দিকনির্দেশনা', 'Directions'),
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -471,17 +491,17 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: AppColors.outlineVariant, width: 1),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.phone, size: 16, color: AppColors.onSurface),
-                                SizedBox(width: 4),
+                                const Icon(Icons.phone, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'কল করুন',
-                                  style: TextStyle(
+                                  lang.t('কল করুন', 'Call'),
+                                  style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.onSurface,
+                                    color: AppColors.primary,
                                   ),
                                 ),
                               ],
@@ -501,6 +521,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   }
 
   Widget _buildStockBadge(String status) {
+    final lang = ref.watch(localeProvider);
     Color bgColor;
     Color textColor;
     String label;
@@ -509,17 +530,17 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
       case 'in_stock':
         bgColor = AppColors.primaryFixed;
         textColor = AppColors.primary;
-        label = 'স্টক আছে';
+        label = lang.t('স্টক আছে', 'In Stock');
         break;
       case 'limited':
         bgColor = const Color(0xFFFEF3C7);
         textColor = const Color(0xFFCA8A04);
-        label = 'সীমিত স্টক';
+        label = lang.t('সীমিত স্টক', 'Limited');
         break;
       default:
         bgColor = AppColors.errorContainer;
         textColor = AppColors.error;
-        label = 'স্টক নেই';
+        label = lang.t('স্টক নেই', 'No Stock');
     }
 
     return Container(
@@ -546,12 +567,11 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
           ),
           if (status == 'in_stock')
             Text(
-              'পলিভ্যালেন্ট এভিএস',
-              style: TextStyle(
+              lang.t('পলিভ্যালেন্ট এভিএস', 'Polyvalent AVS'),
+              style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: AppColors.primaryContainer,
-                letterSpacing: 0.05,
               ),
             ),
         ],
@@ -730,6 +750,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
   }
 
   void _showHospitalDetailsSheet(Hospital hospital) {
+    final lang = ref.read(localeProvider);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -754,7 +775,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          hospital.nameBn,
+                          lang.t(hospital.nameBn, hospital.nameEn),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -786,7 +807,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                           _makeCall(hospital.phone);
                         },
                         icon: const Icon(Icons.phone),
-                        label: const Text('কল করুন'),
+                        label: Text(lang.t('কল করুন', 'Call')),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -798,7 +819,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                         _openDirections(hospital.lat, hospital.lng);
                       },
                       icon: const Icon(Icons.navigation),
-                      label: const Text('দিকনির্দেশনা'),
+                      label: Text(lang.t('দিকনির্দেশনা', 'Directions')),
                     ),
                   ),
                 ],
@@ -817,5 +838,217 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
         math.cos((lat2 - lat1) * p) / 2 +
         math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lon2 - lon1) * p)) / 2;
     return 12742 * math.asin(math.sqrt(a));
+  }
+
+  void _showFilterSheet(BuildContext context, AppLanguage lang) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        lang.t('ফিল্টার করুন', 'Filter Options'),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  
+                  Text(
+                    lang.t('অ্যান্টি-ভেনম স্টক', 'Anti-venom Stock'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildFilterChip(
+                        label: lang.t('স্টক আছে', 'In Stock'),
+                        isSelected: _selectedStockStatuses.contains('in_stock'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedStockStatuses.add('in_stock');
+                            } else {
+                              if (_selectedStockStatuses.length > 1) {
+                                _selectedStockStatuses.remove('in_stock');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: lang.t('সীমিত', 'Limited'),
+                        isSelected: _selectedStockStatuses.contains('limited'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedStockStatuses.add('limited');
+                            } else {
+                              if (_selectedStockStatuses.length > 1) {
+                                _selectedStockStatuses.remove('limited');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: lang.t('স্টক নেই', 'No Stock'),
+                        isSelected: _selectedStockStatuses.contains('out_of_stock'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedStockStatuses.add('out_of_stock');
+                            } else {
+                              if (_selectedStockStatuses.length > 1) {
+                                _selectedStockStatuses.remove('out_of_stock');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  Text(
+                    lang.t('হাসপাতালের ধরন', 'Hospital Type'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChip(
+                        label: lang.t('মেডিকেল কলেজ', 'Medical College'),
+                        isSelected: _selectedHospitalTypes.contains('medical_college'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedHospitalTypes.add('medical_college');
+                            } else {
+                              if (_selectedHospitalTypes.length > 1) {
+                                _selectedHospitalTypes.remove('medical_college');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                      _buildFilterChip(
+                        label: lang.t('জেলা সদর', 'District'),
+                        isSelected: _selectedHospitalTypes.contains('district'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedHospitalTypes.add('district');
+                            } else {
+                              if (_selectedHospitalTypes.length > 1) {
+                                _selectedHospitalTypes.remove('district');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                      _buildFilterChip(
+                        label: lang.t('উপজেলা স্বাস্থ্য', 'Upazila Health'),
+                        isSelected: _selectedHospitalTypes.contains('upazila'),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedHospitalTypes.add('upazila');
+                            } else {
+                              if (_selectedHospitalTypes.length > 1) {
+                                _selectedHospitalTypes.remove('upazila');
+                              }
+                            }
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required ValueChanged<bool> onSelected,
+  }) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: AppColors.primary,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+        ),
+      ),
+    );
+  }
+
+  String _toBengaliDigits(String input) {
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    String result = input;
+    for (int i = 0; i < english.length; i++) {
+      result = result.replaceAll(english[i], bengali[i]);
+    }
+    return result;
   }
 }

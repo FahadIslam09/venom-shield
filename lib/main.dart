@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,10 +13,13 @@ void main() async {
 
   try {
     // Warm up database and await pending fonts in parallel
-    await Future.wait<dynamic>([
-      DatabaseHelper.instance.database,
+    final List<Future<dynamic>> warmUpFutures = [
       GoogleFonts.pendingFonts([GoogleFonts.hindSiliguri()]),
-    ]);
+    ];
+    if (!kIsWeb) {
+      warmUpFutures.add(DatabaseHelper.instance.database);
+    }
+    await Future.wait<dynamic>(warmUpFutures);
   } catch (e) {
     print('Startup initialization error: $e');
   }

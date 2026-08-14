@@ -14,7 +14,9 @@ void main() {
         confidence: 0.85,
         dangerLevel: 'high',
         firstAidBn: [],
+        firstAidEn: [],
         descriptionBn: '',
+        descriptionEn: '',
       );
 
       final result = engine.processTriage(scanResult: scanResult);

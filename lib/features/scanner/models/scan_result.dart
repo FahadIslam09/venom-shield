@@ -5,7 +5,9 @@ class ScanResult {
   final double confidence;
   final String dangerLevel; // high, medium, low
   final List<String> firstAidBn;
+  final List<String> firstAidEn;
   final String descriptionBn;
+  final String descriptionEn;
 
   ScanResult({
     required this.speciesBn,
@@ -14,7 +16,9 @@ class ScanResult {
     required this.confidence,
     required this.dangerLevel,
     required this.firstAidBn,
+    required this.firstAidEn,
     required this.descriptionBn,
+    required this.descriptionEn,
   });
 
   factory ScanResult.fromJson(Map<String, dynamic> json) {
@@ -28,7 +32,12 @@ class ScanResult {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      firstAidEn: (json['first_aid_en'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       descriptionBn: json['description_bn'] as String? ?? '',
+      descriptionEn: json['description_en'] as String? ?? '',
     );
   }
 
@@ -40,7 +49,9 @@ class ScanResult {
       'confidence': confidence,
       'danger_level': dangerLevel,
       'first_aid_bn': firstAidBn,
+      'first_aid_en': firstAidEn,
       'description_bn': descriptionBn,
+      'description_en': descriptionEn,
     };
   }
 }

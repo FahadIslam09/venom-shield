@@ -17,6 +17,21 @@ class TriageEngine {
     'রোগীকে ওঝার কাছে নিয়ে মূল্যবান "গোল্ডেন আওয়ার" নষ্ট করবেন না।'
   ];
 
+  static const List<String> standardFirstAidEn = [
+    'Do not panic. Remain calm.',
+    'Do not move the bitten limb. Keep it immobilized using a splint (e.g. piece of wood or bamboo) if it is a hand or leg.',
+    'Wash the wound gently with soap and clean water.',
+    'Do not apply any tight tourniquet or bandage (this can block blood flow and lead to limb damage).',
+    'Do not cut the wound to bleed it or waste time visiting a traditional healer.'
+  ];
+
+  static const List<String> venomousFirstAidEn = [
+    'Keep the affected limb immobilized below heart level.',
+    'Do not apply ice, cut the wound, or tie any tight tourniquets.',
+    'Transport the patient to the nearest hospital stocked with anti-venom as quickly as possible.',
+    'Do not waste the precious "golden hour" by taking the patient to a traditional healer.'
+  ];
+
   TriageResult processTriage({
     ScanResult? scanResult,
     Map<String, bool>? symptomAnswers,
@@ -30,12 +45,17 @@ class TriageEngine {
         reasonBn: scanResult.venomous
             ? 'ছবি স্ক্যানের মাধ্যমে বিষাক্ত সাপ (${scanResult.speciesBn} / ${scanResult.speciesEn}) শনাক্ত করা হয়েছে।'
             : 'ছবি স্ক্যানের মাধ্যমে বিষহীন সাপ (${scanResult.speciesBn} / ${scanResult.speciesEn}) শনাক্ত করা হয়েছে।',
+        reasonEn: scanResult.venomous
+            ? 'Venomous snake (${scanResult.speciesEn}) identified via image scan.'
+            : 'Non-venomous snake (${scanResult.speciesEn}) identified via image scan.',
         firstAidBn: scanResult.venomous ? venomousFirstAidBn : standardFirstAidBn,
+        firstAidEn: scanResult.venomous ? venomousFirstAidEn : standardFirstAidEn,
         matchedSpeciesBn: scanResult.speciesBn,
         matchedSpeciesEn: scanResult.speciesEn,
         fallbackLayer: 1,
         confidence: scanResult.confidence,
         descriptionBn: scanResult.descriptionBn,
+        descriptionEn: scanResult.descriptionEn,
       );
     }
 
@@ -45,7 +65,9 @@ class TriageEngine {
         venomous: true,
         severity: 'high',
         reasonBn: 'কামড়ের স্থানের ছবি বিশ্লেষণ করে বিষদাঁতের গভীর ক্ষতের লক্ষণ পাওয়া গেছে।',
+        reasonEn: 'Bite wound analysis detected deep fang puncture marks suggestive of a venomous bite.',
         firstAidBn: venomousFirstAidBn,
+        firstAidEn: venomousFirstAidEn,
         fallbackLayer: 1,
         confidence: scanResult.confidence,
       );
@@ -69,7 +91,9 @@ class TriageEngine {
           venomous: true,
           severity: score >= 8.0 ? 'high' : 'medium',
           reasonBn: 'শারীরিক লক্ষণ ও সাপের বিবরণ অনুযায়ী এটি বিষাক্ত সাপের কামড় হওয়ার সম্ভাবনা রয়েছে (স্কোর: ${score.toStringAsFixed(1)})।',
+          reasonEn: 'Based on symptoms and snake details, this is likely a venomous snake bite (Score: ${score.toStringAsFixed(1)}).',
           firstAidBn: venomousFirstAidBn,
+          firstAidEn: venomousFirstAidEn,
           fallbackLayer: 2,
           confidence: score >= 8.0 ? 0.85 : 0.70,
         );
@@ -78,7 +102,9 @@ class TriageEngine {
           venomous: false,
           severity: 'low',
           reasonBn: 'লক্ষণ বিশ্লেষণ করে বিষক্রিয়ার তেমন কোনো চিহ্ন পাওয়া যায়নি (স্কোর: ${score.toStringAsFixed(1)})। তবুও সতর্ক থাকুন।',
+          reasonEn: 'Symptom analysis did not detect significant signs of envenomation (Score: ${score.toStringAsFixed(1)}). Remain cautious.',
           firstAidBn: standardFirstAidBn,
+          firstAidEn: standardFirstAidEn,
           fallbackLayer: 2,
           confidence: 0.90,
         );
@@ -91,7 +117,9 @@ class TriageEngine {
       venomous: true,
       severity: 'high',
       reasonBn: 'পর্যপ্ত তথ্য পাওয়া যায়নি। জাতীয় গাইডলাইন অনুযায়ী জরুরি সতর্কতাবশত কামড়টিকে বিষাক্ত হিসেবে বিবেচনা করে হাসপাতালে রেফার করা হচ্ছে।',
+      reasonEn: 'Insufficient data available. Following national guidelines, the bite is conservatively treated as venomous, and the patient is referred to a hospital.',
       firstAidBn: venomousFirstAidBn,
+      firstAidEn: venomousFirstAidEn,
       fallbackLayer: 3,
       confidence: 0.50,
     );

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../providers/triage_provider.dart';
 import '../../scanner/providers/scanner_provider.dart';
 
@@ -22,19 +23,20 @@ class TriageResultScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final triageState = ref.watch(triageProvider);
     final result = triageState.result;
+    final lang = ref.watch(localeProvider);
 
     if (result == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('শনাক্তকরণ ফলাফল'),
+          title: Text(lang.t('শনাক্তকরণ ফলাফল', 'Identification Results')),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.go('/'),
           ),
         ),
-        body: const Center(
-          child: Text('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি।'),
+        body: Center(
+          child: Text(lang.t('কোনো মূল্যায়নের তথ্য পাওয়া যায়নি।', 'No assessment information found.')),
         ),
       );
     }
@@ -42,7 +44,7 @@ class TriageResultScreen extends ConsumerWidget {
     final bool isVenomous = result.venomous;
     final bool isChecklist = result.fallbackLayer != 1;
     final double confidenceVal = result.confidence ?? (isVenomous ? 0.85 : 0.15);
-    final String confidencePctBn = _toBengaliDigits('${(confidenceVal * 100).toStringAsFixed(0)}%');
+    final String confidencePctBn = _formatNumber('${(confidenceVal * 100).toStringAsFixed(0)}%', lang);
 
     // Dynamic symptoms display list
     final Map<String, String> symptomNamesBn = {
@@ -54,10 +56,22 @@ class TriageResultScreen extends ConsumerWidget {
       'severe_pain': 'তীব্র ব্যথা',
       'swelling': 'ক্ষতস্থান ফুলে যাওয়া',
     };
+    final Map<String, String> symptomNamesEn = {
+      'hood_seen': 'Snake head hood observed',
+      'eyelid_droop': 'Drooping eyelids (Ptosis)',
+      'bleeding_wound': 'Continuous wound bleeding',
+      'difficulty_breathing': 'Difficulty breathing/swallowing',
+      'two_punctures': 'Two distinct fang punctures',
+      'severe_pain': 'Severe pain',
+      'swelling': 'Wound swelling',
+    };
+
     final selectedSymptoms = triageState.symptomAnswers.entries
         .where((e) => e.value)
-        .map((e) => symptomNamesBn[e.key] ?? e.key)
+        .map((e) => lang.t(symptomNamesBn[e.key] ?? e.key, symptomNamesEn[e.key] ?? e.key))
         .toList();
+
+    final firstAidSteps = lang.isBengali ? result.firstAidBn : result.firstAidEn;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -66,9 +80,9 @@ class TriageResultScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.go('/'),
         ),
-        title: const Text(
-          'শনাক্তকরণ ফলাফল',
-          style: TextStyle(
+        title: Text(
+          lang.t('শনাক্তকরণ ফলাফল', 'Identification Results'),
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: AppColors.primary,
@@ -88,38 +102,38 @@ class TriageResultScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. Assessment Type & Result Card
-            _buildPrimaryResultCard(result, isVenomous, isChecklist, confidencePctBn),
+            _buildPrimaryResultCard(result, isVenomous, isChecklist, confidencePctBn, lang),
             const SizedBox(height: 20),
 
             // 2. Snake Image Card (if image scan path)
             if (!isChecklist) ...[
-              _buildSnakeImageCard(result, isVenomous, ref.watch(scannerProvider).imagePath),
+              _buildSnakeImageCard(result, isVenomous, ref.watch(scannerProvider).imagePath, lang),
               const SizedBox(height: 20),
-              _buildConfidenceIndicator(confidenceVal, confidencePctBn),
+              _buildConfidenceIndicator(confidenceVal, confidencePctBn, lang),
               const SizedBox(height: 20),
             ],
 
             // 3. Clinical Symptoms & Warnings Card
-            _buildClinicalWarningsCard(isVenomous, isChecklist, selectedSymptoms),
+            _buildClinicalWarningsCard(isVenomous, isChecklist, selectedSymptoms, lang),
             const SizedBox(height: 20),
 
             // 4. First Aid Instructions Card
-            _buildFirstAidCard(result.firstAidBn),
+            _buildFirstAidCard(firstAidSteps, lang),
             const SizedBox(height: 24),
 
             // 5. Action Buttons (Visual Focus: Primary first, secondary later)
-            _buildActionButtons(context, result),
+            _buildActionButtons(context, result, lang),
             const SizedBox(height: 24),
 
             // Safety Warning
-            _buildSafetyWarning(),
+            _buildSafetyWarning(lang),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPrimaryResultCard(dynamic result, bool isVenomous, bool isChecklist, String confidencePctBn) {
+  Widget _buildPrimaryResultCard(dynamic result, bool isVenomous, bool isChecklist, String confidencePctBn, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -143,8 +157,8 @@ class TriageResultScreen extends ConsumerWidget {
           // Assessment Type
           Text(
             isChecklist 
-                ? 'লক্ষণ-ভিত্তিক বিষক্রিয়া ঝুঁকি মূল্যায়ন' 
-                : 'সাপ সনাক্তকরণ ও বিষক্রিয়া ঝুঁকি মূল্যায়ন',
+                ? lang.t('লক্ষণ-ভিত্তিক বিষক্রিয়া ঝুঁকি মূল্যায়ন', 'Symptom-Based Envenomation Risk Assessment')
+                : lang.t('সাপ সনাক্তকরণ ও বিষক্রিয়া ঝুঁকি মূল্যায়ন', 'Snake Identification & Envenomation Assessment'),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 12,
@@ -157,14 +171,14 @@ class TriageResultScreen extends ConsumerWidget {
 
           // Empty state title if checklist
           if (isChecklist) ...[
-            const Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.help_outline, color: AppColors.textSecondary, size: 20),
-                SizedBox(width: 6),
+                const Icon(Icons.help_outline, color: AppColors.textSecondary, size: 20),
+                const SizedBox(width: 6),
                 Text(
-                  'সাপ সনাক্ত করা যায়নি',
-                  style: TextStyle(
+                  lang.t('সাপ সনাক্ত করা যায়নি', 'Snake not identified'),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textSecondary,
@@ -186,7 +200,7 @@ class TriageResultScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                isVenomous ? 'উচ্চ ঝুঁকি' : 'কম ঝুঁকি',
+                isVenomous ? lang.t('উচ্চ ঝুঁকি', 'High Risk') : lang.t('কম ঝুঁকি', 'Low Risk'),
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -202,7 +216,7 @@ class TriageResultScreen extends ConsumerWidget {
 
           // Estimated Envenomation Risk %
           Text(
-            'আনুমানিক বিষক্রিয়ার ঝুঁকি — $confidencePctBn',
+            lang.t('আনুমানিক বিষক্রিয়ার ঝুঁকি — $confidencePctBn', 'Estimated Envenomation Risk — $confidencePctBn'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 18,
@@ -211,10 +225,13 @@ class TriageResultScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'এই শতাংশটি আপনার দেওয়া লক্ষণসমূহের ওপর ভিত্তি করে বিষক্রিয়ার আনুমানিক ঝুঁকি নির্দেশ করে, সাপের প্রজাতি বিষধর হওয়ার নিশ্চয়তা নয়।',
+          Text(
+            lang.t(
+              'এই শতাংশটি আপনার দেওয়া লক্ষণসমূহের ওপর ভিত্তি করে বিষক্রিয়ার আনুমানিক ঝুঁকি নির্দেশ করে, সাপের প্রজাতি বিষধর হওয়ার নিশ্চয়তা নয়।', 
+              'This percentage indicates the estimated risk of envenomation based on your symptoms, not the certainty of the snake species being venomous.'
+            ),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
               height: 1.4,
@@ -225,7 +242,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSnakeImageCard(dynamic result, bool isVenomous, String? imagePath) {
+  Widget _buildSnakeImageCard(dynamic result, bool isVenomous, String? imagePath, AppLanguage lang) {
     return Container(
       height: 280,
       decoration: BoxDecoration(
@@ -274,7 +291,7 @@ class TriageResultScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  result.matchedSpeciesBn ?? 'অজ্ঞাত প্রজাতি',
+                  lang.t(result.matchedSpeciesBn ?? 'অজ্ঞাত প্রজাতি', result.matchedSpeciesEn ?? 'Unknown Species'),
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -298,14 +315,14 @@ class TriageResultScreen extends ConsumerWidget {
                       color: AppColors.error,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.warning, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
+                        const Icon(Icons.warning, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
                         Text(
-                          'বিষধর',
-                          style: TextStyle(
+                          lang.t('বিষধর', 'Venomous'),
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -323,7 +340,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildConfidenceIndicator(double confidenceVal, String confidencePctBn) {
+  Widget _buildConfidenceIndicator(double confidenceVal, String confidencePctBn, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -353,18 +370,18 @@ class TriageResultScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'সাপ সনাক্তকরণে এআই আত্মবিশ্বাস',
-                  style: TextStyle(
+                Text(
+                  lang.t('সাপ সনাক্তকরণে এআই আত্মবিশ্বাস', 'AI Confidence in Identification'),
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  '(ছবি দেখে প্রজাতি চেনার নির্ভরযোগ্যতা)',
-                  style: TextStyle(
+                Text(
+                  lang.t('(ছবি দেখে প্রজাতি চেনার নির্ভরযোগ্যতা)', '(Reliability of identifying species from image)'),
+                  style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
                   ),
@@ -403,7 +420,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildClinicalWarningsCard(bool isVenomous, bool isChecklist, List<String> selectedSymptoms) {
+  Widget _buildClinicalWarningsCard(bool isVenomous, bool isChecklist, List<String> selectedSymptoms, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -426,7 +443,7 @@ class TriageResultScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'সনাক্তকৃত শারীরিক লক্ষণসমূহ',
+                lang.t('সনাক্তকৃত শারীরিক লক্ষণসমূহ', 'Detected Physical Symptoms'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -438,9 +455,9 @@ class TriageResultScreen extends ConsumerWidget {
           const SizedBox(height: 12),
 
           if (selectedSymptoms.isEmpty)
-            const Text(
-              'কোনো গুরুতর লক্ষণ সনাক্ত করা যায়নি।',
-              style: TextStyle(
+            Text(
+              lang.t('কোনো গুরুতর লক্ষণ সনাক্ত করা যায়নি।', 'No severe symptoms detected.'),
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),
@@ -477,8 +494,8 @@ class TriageResultScreen extends ConsumerWidget {
           // Medical Disclaimer
           Text(
             isVenomous 
-                ? 'বিষক্রিয়া নিশ্চিত করা যাচ্ছে না, তবে আপনার দেওয়া উপসর্গগুলো গুরুতর হওয়ায় দ্রুত নিকটস্থ হাসপাতালে যান।'
-                : 'সাপটি বিষাক্ত ছিল কিনা তা নিশ্চিত হওয়া যায়নি। যেকোনো নতুন বা মৃদু লক্ষণ দেখা দিলে সতর্ক থাকুন এবং ডাক্তারের পরামর্শ নিন।',
+                ? lang.t('বিষক্রিয়া নিশ্চিত করা যাচ্ছে না, তবে আপনার দেওয়া উপসর্গগুলো গুরুতর হওয়ায় দ্রুত নিকটস্থ হাসপাতালে যান।', 'Envenomation cannot be confirmed, but since your symptoms are severe, please go to the nearest hospital immediately.')
+                : lang.t('সাপটি বিষাক্ত ছিল কিনা তা নিশ্চিত হওয়া যায়নি। যেকোনো নতুন বা মৃদু লক্ষণ দেখা দিলে সতর্ক থাকুন এবং ডাক্তারের পরামর্শ নিন।', 'Toxicity of the snake is unverified. Watch closely for any new or mild symptoms and seek medical advice.'),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -489,9 +506,9 @@ class TriageResultScreen extends ConsumerWidget {
 
           if (isChecklist) ...[
             const SizedBox(height: 8),
-            const Text(
-              'সাপ সনাক্ত করা সম্ভব হয়নি। উপসর্গের ভিত্তিতে ঝুঁকি মূল্যায়ন করা হয়েছে। মনে রাখবেন, সাপ সনাক্ত করতে না পারার অর্থ এই নয় যে সাপটি অবিষধর ছিল।',
-              style: TextStyle(
+            Text(
+              lang.t('সাপ সনাক্ত করা সম্ভব হয়নি। উপসর্গের ভিত্তিতে ঝুঁকি মূল্যায়ন করা হয়েছে। মনে রাখবেন, সাপ সনাক্ত করতে না পারার অর্থ এই নয় যে সাপটি অবিষধর ছিল।', 'The snake was not identified. Risk evaluated based on symptoms. Remember, failure to identify the snake does not mean it was non-venomous.'),
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -503,7 +520,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFirstAidCard(List<String> firstAidSteps) {
+  Widget _buildFirstAidCard(List<String> firstAidSteps, AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -514,13 +531,13 @@ class TriageResultScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.healing, color: AppColors.primary, size: 24),
-              SizedBox(width: 8),
+              const Icon(Icons.healing, color: AppColors.primary, size: 24),
+              const SizedBox(width: 8),
               Text(
-                'জরুরী প্রাথমিক পদক্ষেপ',
-                style: TextStyle(
+                lang.t('জরুরী প্রাথমিক পদক্ষেপ', 'Emergency First Aid'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -531,9 +548,8 @@ class TriageResultScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Column(
             children: firstAidSteps.asMap().entries.map((entry) {
-              final idx = entry.key;
               final step = entry.value;
-              final isWarning = step.contains('ওঝা') || step.contains('কেটে') || step.contains('টর্নিকেট') || step.contains('বাঁধুন');
+              final isWarning = step.contains('ওঝা') || step.contains('কেটে') || step.contains('টর্নিকেট') || step.contains('healer') || step.contains('tourniquet') || step.contains('cut');
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -574,7 +590,9 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, dynamic result) {
+  Widget _buildActionButtons(BuildContext context, dynamic result, AppLanguage lang) {
+    final hasDescription = lang.isBengali ? result.descriptionBn != null : result.descriptionEn != null;
+
     return Column(
       children: [
         // Primary CTA - Visual Focus
@@ -584,9 +602,9 @@ class TriageResultScreen extends ConsumerWidget {
           child: ElevatedButton.icon(
             onPressed: () => context.push('/hospital-radar'),
             icon: const Icon(Icons.local_hospital, color: Colors.white),
-            label: const Text(
-              'কাছের অ্যান্টি-ভেনম হাসপাতাল খুঁজুন',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            label: Text(
+              lang.t('কাছের অ্যান্টি-ভেনম হাসপাতাল খুঁজুন', 'Find Nearest Anti-venom Hospital'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryContainer,
@@ -605,9 +623,9 @@ class TriageResultScreen extends ConsumerWidget {
           child: OutlinedButton.icon(
             onPressed: () => _makeCall('999'),
             icon: const Icon(Icons.phone_in_talk, color: AppColors.error),
-            label: const Text(
-              'জরুরী হেল্পলাইন ৯৯৯ কল করুন',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.error),
+            label: Text(
+              lang.t('জরুরী হেল্পলাইন ৯৯৯ কল করুন', 'Call Emergency Helpline 999'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.error),
             ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.error, width: 1.5),
@@ -626,9 +644,9 @@ class TriageResultScreen extends ConsumerWidget {
           child: OutlinedButton.icon(
             onPressed: () => context.push('/bite-assessment'),
             icon: const Icon(Icons.health_and_safety, color: AppColors.primary),
-            label: const Text(
-              'ক্ষত স্থান এআই মূল্যায়ন শুরু করুন',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
+            label: Text(
+              lang.t('ক্ষত স্থান এআই মূল্যায়ন শুরু করুন', 'Start Wound AI Assessment'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
             ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.outlineVariant, width: 1),
@@ -640,17 +658,17 @@ class TriageResultScreen extends ConsumerWidget {
         ),
 
         // Snake details if available
-        if (result.descriptionBn != null) ...[
+        if (hasDescription) ...[
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: () => _showSnakeDetailsSheet(context, result),
+              onPressed: () => _showSnakeDetailsSheet(context, result, lang),
               icon: const Icon(Icons.menu_book, color: AppColors.primary),
-              label: const Text(
-                'সাপটি সম্পর্কে বিস্তারিত জানুন',
-                style: TextStyle(fontSize: 15, color: AppColors.primary),
+              label: Text(
+                lang.t('সাপটি সম্পর্কে বিস্তারিত জানুন', 'Learn More About the Snake'),
+                style: const TextStyle(fontSize: 15, color: AppColors.primary),
               ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.outlineVariant, width: 1),
@@ -665,7 +683,7 @@ class TriageResultScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSafetyWarning() {
+  Widget _buildSafetyWarning(AppLanguage lang) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -676,14 +694,14 @@ class TriageResultScreen extends ConsumerWidget {
           width: 1,
         ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.pan_tool, color: AppColors.onTertiaryContainer, size: 20),
-          SizedBox(width: 8),
+          const Icon(Icons.pan_tool, color: AppColors.onTertiaryContainer, size: 20),
+          const SizedBox(width: 8),
           Text(
-            'সাপের কাছে যাবেন না। নিরাপদ দূরত্ব বজায় রাখুন।',
-            style: TextStyle(
+            lang.t('সাপের কাছে যাবেন না। নিরাপদ দূরত্ব বজায় রাখুন।', 'Do not approach the snake. Keep a safe distance.'),
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.onTertiaryContainer,
@@ -693,6 +711,13 @@ class TriageResultScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatNumber(String input, AppLanguage lang) {
+    if (lang == AppLanguage.bengali) {
+      return _toBengaliDigits(input);
+    }
+    return input;
   }
 
   String _toBengaliDigits(String input) {
@@ -705,7 +730,12 @@ class TriageResultScreen extends ConsumerWidget {
     return result;
   }
 
-  void _showSnakeDetailsSheet(BuildContext context, dynamic result) {
+  void _showSnakeDetailsSheet(BuildContext context, dynamic result, AppLanguage lang) {
+    final name = lang.t(result.matchedSpeciesBn ?? 'অজ্ঞাত প্রজাতি', result.matchedSpeciesEn ?? 'Unknown Species');
+    final desc = lang.isBengali 
+        ? (result.descriptionBn ?? 'এই প্রজাতি সম্পর্কে কোনো বিস্তারিত বিবরণ পাওয়া যায়নি।')
+        : (result.descriptionEn ?? 'No detailed description available for this species.');
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -730,7 +760,7 @@ class TriageResultScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          result.matchedSpeciesBn ?? 'অজ্ঞাত প্রজাতি',
+                          name,
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -757,7 +787,7 @@ class TriageResultScreen extends ConsumerWidget {
               ),
               const Divider(height: 24),
               Text(
-                result.descriptionBn ?? 'এই প্রজাতি সম্পর্কে কোনো বিস্তারিত বিবরণ পাওয়া যায়নি।',
+                desc,
                 style: const TextStyle(
                   fontSize: 15,
                   color: AppColors.textPrimary,

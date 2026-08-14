@@ -15,6 +15,9 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   Future<Database> get database async {
+    if (kIsWeb) {
+      throw UnsupportedError('Database access not supported on Web. Use local storage cache instead.');
+    }
     if (_database != null) return _database!;
     _database = await _initDB('venonshield.db');
     // Ensure the assessments table exists (schema migration)

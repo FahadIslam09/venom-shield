@@ -12,6 +12,23 @@ import 'features/bite_assessment/screens/bite_assessment_result_screen.dart';
 class VenomShieldApp extends StatelessWidget {
   const VenomShieldApp({super.key});
 
+  CustomTransitionPage<void> _fadeRoute({
+    required GoRouterState state,
+    required Widget child,
+  }) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+          child: child,
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 200),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final GoRouter router = GoRouter(
@@ -19,31 +36,52 @@ class VenomShieldApp extends StatelessWidget {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => const HomeScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const HomeScreen(),
+          ),
         ),
         GoRoute(
           path: '/scan',
-          builder: (context, state) => const ScanScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const ScanScreen(),
+          ),
         ),
         GoRoute(
           path: '/triage-checklist',
-          builder: (context, state) => const SymptomChecklistScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const SymptomChecklistScreen(),
+          ),
         ),
         GoRoute(
           path: '/triage-result',
-          builder: (context, state) => const TriageResultScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const TriageResultScreen(),
+          ),
         ),
         GoRoute(
           path: '/hospital-radar',
-          builder: (context, state) => const HospitalRadarScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const HospitalRadarScreen(),
+          ),
         ),
         GoRoute(
           path: '/bite-assessment',
-          builder: (context, state) => const BiteAssessmentScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const BiteAssessmentScreen(),
+          ),
         ),
         GoRoute(
           path: '/bite-assessment-result',
-          builder: (context, state) => const BiteAssessmentResultScreen(),
+          pageBuilder: (context, state) => _fadeRoute(
+            state: state,
+            child: const BiteAssessmentResultScreen(),
+          ),
         ),
       ],
     );

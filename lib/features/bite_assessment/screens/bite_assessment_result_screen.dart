@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/bite_assessment_provider.dart';
@@ -84,8 +85,17 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.note_alt_outlined, color: AppColors.primary, size: 24),
-              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+              ),
+              const SizedBox(width: 4),
               const Text(
                 'VenomShield AI',
                 style: TextStyle(
@@ -95,22 +105,6 @@ class BiteAssessmentResultScreen extends ConsumerWidget {
                 ),
               ),
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'অফলাইন',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurfaceVariant,
-                letterSpacing: 0.08,
-              ),
-            ),
           ),
         ],
       ),

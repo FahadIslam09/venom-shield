@@ -19,6 +19,14 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
   int _currentStep = 1;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(biteAssessmentProvider.notifier).clear();
+    });
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();

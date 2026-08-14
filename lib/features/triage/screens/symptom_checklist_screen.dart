@@ -2,13 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/bottom_nav.dart';
 import '../providers/triage_provider.dart';
 
-class SymptomChecklistScreen extends ConsumerWidget {
+class SymptomChecklistScreen extends ConsumerStatefulWidget {
   const SymptomChecklistScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SymptomChecklistScreen> createState() => _SymptomChecklistScreenState();
+}
+
+class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(triageProvider.notifier).clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(triageProvider);
 
     final List<Map<String, dynamic>> symptomList = [
@@ -58,6 +72,16 @@ class SymptomChecklistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
         title: const Text('লক্ষণ পরীক্ষা তালিকা'),
       ),
       body: Column(
@@ -203,6 +227,7 @@ class SymptomChecklistScreen extends ConsumerWidget {
           ),
         ],
       ),
+      bottomNavigationBar: const VenomShieldBottomNav(currentIndex: 2),
     );
   }
 }

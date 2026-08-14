@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/bottom_nav.dart';
 import '../providers/scanner_provider.dart';
 import '../../triage/providers/triage_provider.dart';
 import '../../../core/utils/connectivity_service.dart';
@@ -84,6 +85,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
           ],
         ),
       ),
+      bottomNavigationBar: const VenomShieldBottomNav(currentIndex: 1),
     );
   }
 

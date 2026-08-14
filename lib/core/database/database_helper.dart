@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import '../utils/local_storage.dart';
 import '../../features/hospital/models/hospital.dart';
 
 class DatabaseHelper {
@@ -227,6 +228,7 @@ class DatabaseHelper {
         item['id'] = list.length + 1;
         list.add(item);
         _webAssessmentsCache = list;
+        WebLocalStorage.save('assessments_history', json.encode(list));
         return 1;
       } catch (e) {
         print('Web save assessment failed: $e');
@@ -241,14 +243,32 @@ class DatabaseHelper {
   List<Map<String, dynamic>>? _webAssessmentsCache;
   Future<List<Map<String, dynamic>>> _getWebAssessments() async {
     if (_webAssessmentsCache != null) return _webAssessmentsCache!;
-    _webAssessmentsCache = [];
+    try {
+      final data = WebLocalStorage.load('assessments_history');
+      if (data != null) {
+        final List<dynamic> decoded = json.decode(data);
+        _webAssessmentsCache = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } else {
+        _webAssessmentsCache = [];
+      }
+    } catch (e) {
+      print('Failed to load web assessments history: $e');
+      _webAssessmentsCache = [];
+    }
     return _webAssessmentsCache!;
   }
 
   // Fetch all assessments from history
   Future<List<Map<String, dynamic>>> getAssessments() async {
     if (kIsWeb) {
-      return await _getWebAssessments();
+      final list = await _getWebAssessments();
+      final sortedList = List<Map<String, dynamic>>.from(list);
+      sortedList.sort((a, b) {
+        final String tA = a['timestamp'] ?? '';
+        final String tB = b['timestamp'] ?? '';
+        return tB.compareTo(tA);
+      });
+      return sortedList;
     }
     final db = await instance.database;
     return await db.query('assessments', orderBy: 'timestamp DESC');

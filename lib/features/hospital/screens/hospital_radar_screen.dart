@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/bottom_nav.dart';
 import '../providers/hospital_provider.dart';
 import '../models/hospital.dart';
 
@@ -61,6 +63,7 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
         onPressed: () => ref.read(hospitalProvider.notifier).fetchHospitals(),
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
+      bottomNavigationBar: const VenomShieldBottomNav(currentIndex: 3),
     );
   }
 
@@ -79,8 +82,17 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.note_alt_outlined, color: AppColors.primary, size: 24),
-              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+              ),
+              const SizedBox(width: 4),
               const Text(
                 'VenomShield AI',
                 style: TextStyle(
@@ -88,55 +100,6 @@ class _HospitalRadarScreenState extends ConsumerState<HospitalRadarScreen> {
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              // Bilingual Toggle
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.outlineVariant, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'EN',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant,
-                        letterSpacing: 0.08,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.swap_horiz, size: 14, color: AppColors.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(
-                      'BN',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
-                        letterSpacing: 0.08,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Offline Indicator
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.outlineVariant, width: 1),
-                ),
-                child: const Icon(Icons.wifi_off, size: 16, color: AppColors.onSurfaceVariant),
               ),
             ],
           ),

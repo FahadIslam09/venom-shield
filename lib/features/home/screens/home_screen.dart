@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/bottom_nav.dart';
 import '../../hospital/providers/hospital_provider.dart';
 import '../providers/history_provider.dart';
 
@@ -61,7 +62,7 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const VenomShieldBottomNav(currentIndex: 0),
     );
   }
 
@@ -88,65 +89,6 @@ class HomeScreen extends ConsumerWidget {
                   color: AppColors.primary,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              // Bilingual Toggle
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.outlineVariant, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    const Text(
-                      'ENG',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryContainer,
-                        letterSpacing: 0.08,
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 12,
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
-                      color: AppColors.outlineVariant,
-                    ),
-                    const Text(
-                      'BN',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant,
-                        letterSpacing: 0.08,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Offline Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'অফলাইন',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onSurfaceVariant,
-                    letterSpacing: 0.08,
-                  ),
                 ),
               ),
             ],
@@ -188,7 +130,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 const Text(
-                  'জাতীয় হেল্পライン - দ্রুত প্রতিক্রিয়া',
+                  'জাতীয় হেল্পলাইন - দ্রুত প্রতিক্রিয়া',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -326,7 +268,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: _buildSymptomLogCard(context, history),
+                child: _buildSymptomLogCard(context),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -428,19 +370,8 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSymptomLogCard(BuildContext context, List<Map<String, dynamic>> history) {
-    List<String> tags = ['ফণা তোলা', 'ফোলাভাব', 'তীব্র ব্যথা'];
-    if (history.isNotEmpty) {
-      final last = history.first;
-      if (last['symptoms'] != null) {
-        try {
-          final List<dynamic> decoded = json.decode(last['symptoms']);
-          if (decoded.isNotEmpty) {
-            tags = decoded.map((e) => e.toString()).toList();
-          }
-        } catch (_) {}
-      }
-    }
+  Widget _buildSymptomLogCard(BuildContext context) {
+    const List<String> tags = ['ফণা তোলা', 'ফোলাভাব', 'তীব্র ব্যথা'];
 
     return GestureDetector(
       onTap: () => context.push('/triage-checklist'),
@@ -589,64 +520,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.only(bottom: 8, top: 8),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(
-            top: BorderSide(color: AppColors.outlineVariant, width: 1),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(context, Icons.home, 'হোম', true, () => {}),
-            _buildNavItem(context, Icons.settings_overscan, 'স্ক্যানার', false, () => context.push('/scan')),
-            _buildNavItem(context, Icons.assignment, 'মূল্যায়ন', false, () => context.push('/triage-checklist')),
-            _buildNavItem(context, Icons.local_hospital, 'হাসপাতাল', false, () => context.push('/hospital-radar')),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(BuildContext context, IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: isActive
-            ? BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              )
-            : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? AppColors.onPrimaryContainer : AppColors.onSecondaryContainer,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: isActive ? AppColors.onPrimaryContainer : AppColors.onSecondaryContainer,
-                letterSpacing: 0.08,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Shared bottom nav is used
 
   Widget _buildHistoryList(HistoryState state) {
     if (state.isLoading) {

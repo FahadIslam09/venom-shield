@@ -11,6 +11,7 @@ import '../providers/scanner_provider.dart';
 import '../models/scan_result.dart';
 import '../../triage/providers/triage_provider.dart';
 import '../../../core/utils/connectivity_service.dart';
+import 'snake_search_sheet.dart';
 
 class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
@@ -130,34 +131,51 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.outlineVariant, width: 1),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  connectivity == ConnectionStatus.offline ? Icons.wifi_off : Icons.wifi,
-                  size: 14,
-                  color: AppColors.onSurfaceVariant,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.search, color: AppColors.primary, size: 24),
+                tooltip: lang.t('সাপ অনুসন্ধান করুন', 'Search Snake Database'),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const SnakeSearchSheet(),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.outlineVariant, width: 1),
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  connectivity == ConnectionStatus.offline 
-                      ? lang.t('অফলাইন', 'Offline') 
-                      : lang.t('অনলাইন', 'Online'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.onSurfaceVariant,
-                    letterSpacing: 0.05,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      connectivity == ConnectionStatus.offline ? Icons.wifi_off : Icons.wifi,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      connectivity == ConnectionStatus.offline 
+                          ? lang.t('অফলাইন', 'Offline') 
+                          : lang.t('অনলাইন', 'Online'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurfaceVariant,
+                        letterSpacing: 0.05,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),

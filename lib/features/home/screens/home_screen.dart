@@ -9,6 +9,7 @@ import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
 import '../../../core/widgets/language_toggle.dart';
 import '../../hospital/providers/hospital_provider.dart';
+import '../../scanner/screens/snake_search_sheet.dart';
 import '../providers/history_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -143,7 +144,7 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           children: [
             // Top App Bar
-            _buildTopBar(context),
+            _buildTopBar(context, ref, lang),
             // Main Content
             Expanded(
               child: SingleChildScrollView(
@@ -173,7 +174,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildTopBar(BuildContext context, WidgetRef ref, AppLanguage lang) {
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -188,7 +189,7 @@ class HomeScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.note_alt_outlined, color: AppColors.primary, size: 24),
+              const Icon(Icons.shield_outlined, color: AppColors.primary, size: 24),
               const SizedBox(width: 8),
               const Text(
                 'VenomShield AI',
@@ -200,7 +201,24 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const BilingualLanguageToggle(),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.search, color: AppColors.primary, size: 24),
+                tooltip: lang.t('সাপ অনুসন্ধান করুন', 'Search Snake Database'),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const SnakeSearchSheet(),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              const BilingualLanguageToggle(),
+            ],
+          ),
         ],
       ),
     );

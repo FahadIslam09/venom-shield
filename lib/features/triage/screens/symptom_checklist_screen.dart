@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../providers/triage_provider.dart';
 
 class SymptomChecklistScreen extends ConsumerStatefulWidget {
@@ -179,13 +180,19 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
           },
         ),
         title: Text(
-          lang.t('লক্ষণ ও বৈশিষ্ট্য মূল্যায়ন', 'Symptoms & Characteristics Evaluation'),
+          lang.t('লক্ষণ ও তালিকা মূল্যায়ন', 'Symptoms & List Evaluation'),
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.primary,
           ),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: BilingualLanguageToggle(),
+          ),
+        ],
       ),
       body: Column(
         children: [

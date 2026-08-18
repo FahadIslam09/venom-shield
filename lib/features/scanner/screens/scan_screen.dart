@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/widgets/bottom_nav.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../providers/scanner_provider.dart';
 import '../models/scan_result.dart';
 import '../../triage/providers/triage_provider.dart';
@@ -146,8 +147,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                 },
               ),
               const SizedBox(width: 4),
+              const BilingualLanguageToggle(),
+              const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(999),
@@ -527,7 +530,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
                         },
                         icon: const Icon(Icons.checklist, size: 14, color: Colors.white),
                         label: Text(
-                          lang.t('লক্ষণ তালিকা', 'Checklist'),
+                          lang.t('লক্ষণ ও তালিকা', 'Symptoms & List'),
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,

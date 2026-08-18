@@ -51,7 +51,7 @@ class VenomShieldBottomNav extends ConsumerWidget {
                 context,
                 icon: Icons.assignment_outlined,
                 activeIcon: Icons.assignment,
-                label: lang.t('লক্ষণ তালিকা', 'Checklist'),
+                label: lang.t('লক্ষণ ও তালিকা', 'Symptoms & List'),
                 isActive: currentIndex == 2,
                 onTap: () {
                   if (currentIndex != 2) context.go('/triage-checklist');

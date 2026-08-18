@@ -528,7 +528,7 @@ class HomeScreen extends ConsumerWidget {
                 const Icon(Icons.assignment, color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  lang.t('লক্ষণ তালিকা', 'Checklist'),
+                  lang.t('লক্ষণ ও তালিকা', 'Symptoms & List'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,

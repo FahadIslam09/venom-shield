@@ -87,10 +87,9 @@ class TriageNotifier extends StateNotifier<TriageState> {
     });
   }
 
-  void submitImageResult(ScanResult scanResult, {bool isBiteMark = false}) {
+  void submitImageResult(ScanResult scanResult) {
     final result = _engine.processTriage(
       scanResult: scanResult,
-      isBiteMarkScan: isBiteMark,
     );
     state = state.copyWith(result: result);
     // Dynamic history save

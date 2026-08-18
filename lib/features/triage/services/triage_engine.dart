@@ -35,7 +35,6 @@ class TriageEngine {
   TriageResult processTriage({
     ScanResult? scanResult,
     Map<String, bool>? symptomAnswers,
-    bool isBiteMarkScan = false,
   }) {
     // Layer 1: Image Scan (Snake detection)
     if (scanResult != null && scanResult.confidence >= 0.65) {
@@ -56,20 +55,6 @@ class TriageEngine {
         confidence: scanResult.confidence,
         descriptionBn: scanResult.descriptionBn,
         descriptionEn: scanResult.descriptionEn,
-      );
-    }
-
-    // Layer 1.5: Bite Mark Scan fallback if image is specified as a bite mark
-    if (isBiteMarkScan && scanResult != null && scanResult.venomous) {
-      return TriageResult(
-        venomous: true,
-        severity: 'high',
-        reasonBn: 'কামড়ের স্থানের ছবি বিশ্লেষণ করে বিষদাঁতের গভীর ক্ষতের লক্ষণ পাওয়া গেছে।',
-        reasonEn: 'Bite wound analysis detected deep fang puncture marks suggestive of a venomous bite.',
-        firstAidBn: venomousFirstAidBn,
-        firstAidEn: venomousFirstAidEn,
-        fallbackLayer: 1,
-        confidence: scanResult.confidence,
       );
     }
 

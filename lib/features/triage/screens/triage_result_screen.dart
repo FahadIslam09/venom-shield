@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../providers/triage_provider.dart';
 import '../../scanner/providers/scanner_provider.dart';
 import '../../scanner/services/snake_database.dart';
@@ -128,10 +129,10 @@ class TriageResultScreen extends ConsumerWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: AppColors.primary),
-            onPressed: () {},
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: BilingualLanguageToggle(),
           ),
         ],
       ),
@@ -853,27 +854,7 @@ class TriageResultScreen extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
 
-        // Secondary Action - Diagnostic Assessment
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () => context.push('/bite-assessment'),
-            icon: const Icon(Icons.health_and_safety, color: AppColors.primary),
-            label: Text(
-              lang.t('ক্ষত স্থান এআই মূল্যায়ন শুরু করুন', 'Start Wound AI Assessment'),
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.outlineVariant, width: 1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
 
         // Snake details if available
         if (hasDescription) ...[

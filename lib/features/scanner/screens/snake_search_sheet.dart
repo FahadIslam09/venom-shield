@@ -80,7 +80,7 @@ class _SnakeSearchSheetState extends ConsumerState<SnakeSearchSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _SnakeDetailModal(snake: snake, lang: lang),
+      builder: (ctx) => SnakeDetailModal(snake: snake, lang: lang),
     );
   }
 
@@ -381,11 +381,11 @@ class _SnakeSearchSheetState extends ConsumerState<SnakeSearchSheet> {
   }
 }
 
-class _SnakeDetailModal extends StatelessWidget {
+class SnakeDetailModal extends StatelessWidget {
   final SnakeSpecies snake;
   final AppLanguage lang;
 
-  const _SnakeDetailModal({required this.snake, required this.lang});
+  const SnakeDetailModal({super.key, required this.snake, required this.lang});
 
   @override
   Widget build(BuildContext context) {

@@ -10,6 +10,7 @@ import '../../../core/widgets/bottom_nav.dart';
 import '../../../core/widgets/language_toggle.dart';
 import '../../hospital/providers/hospital_provider.dart';
 import '../../scanner/screens/snake_search_sheet.dart';
+import '../../scanner/services/snake_database.dart';
 import '../providers/history_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -711,9 +712,9 @@ class HomeScreen extends ConsumerWidget {
               
               // Map types and risk levels
               final rawType = item['type'] ?? 'Assessment';
-              final String typeStr = rawType == 'সাপ সনাক্তকরণ' || rawType == 'Snake Identification'
+              final String typeStr = rawType == 'সাপ স্ক্যান' || rawType == 'সাপ সনাক্তকরণ' || rawType == 'Snake Identification'
                   ? lang.t('সাপ সনাক্তকরণ', 'Snake Identification')
-                  : (rawType == 'লক্ষণ মূল্যায়ন' || rawType == 'Symptom Assessment'
+                  : (rawType == 'লক্ষণ তালিকা' || rawType == 'লক্ষণ মূল্যায়ন' || rawType == 'Symptom Assessment'
                       ? lang.t('লক্ষণ মূল্যায়ন', 'Symptom Assessment')
                       : lang.t('ক্ষত মূল্যায়ন', 'Bite Assessment'));
 
@@ -722,50 +723,130 @@ class HomeScreen extends ConsumerWidget {
                   ? lang.t('উচ্চ ঝুঁকি', 'High Risk')
                   : lang.t('কম ঝুঁকি', 'Low Risk');
 
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
+              final double riskPct = (item['risk_percentage'] as num?)?.toDouble() ?? 0.0;
+
+              return Card(
+                elevation: 0,
+                color: AppColors.surfaceContainerLowest,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.outlineVariant),
+                  side: BorderSide(
+                    color: venomous ? AppColors.error.withOpacity(0.3) : AppColors.outlineVariant,
+                    width: 1,
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                child: InkWell(
+                  onTap: () => _showHistoryDetail(context, item, lang),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
                       children: [
-                        Text(
-                          '$typeStr - $riskStr',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: venomous ? AppColors.errorContainer : AppColors.primaryFixed,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            venomous ? Icons.gpp_maybe_outlined : Icons.verified_user_outlined,
                             color: venomous ? AppColors.error : AppColors.primary,
+                            size: 24,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          lang.t(
-                            'তারিখ: ${_toBengaliDigits(dateStr)} • ঝুঁকি: ${_toBengaliDigits(item['risk_percentage'].toStringAsFixed(0))}%', 
-                            'Date: $dateStr • Risk: ${item['risk_percentage'].toStringAsFixed(0)}%'
-                          ),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '$typeStr - $riskStr',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: venomous ? AppColors.error : AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    lang.t(
+                                      '${_toBengaliDigits(riskPct.toStringAsFixed(0))}% ঝুঁকি', 
+                                      '${riskPct.toStringAsFixed(0)}% Risk'
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: venomous ? AppColors.error : AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    lang.t('তারিখ: ${_toBengaliDigits(dateStr)}', 'Date: $dateStr'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  if (item['matched_species'] != null && item['matched_species'].toString().isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '• ${item['matched_species']}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.chevron_right, color: AppColors.outline, size: 20),
                       ],
                     ),
-                    Icon(
-                      venomous ? Icons.gpp_maybe_outlined : Icons.verified_user_outlined,
-                      color: venomous ? AppColors.error : AppColors.primary,
-                    ),
-                  ],
+                  ),
                 ),
               );
             },
           ),
       ],
+    );
+  }
+
+  void _showHistoryDetail(BuildContext context, Map<String, dynamic> item, AppLanguage lang) {
+    final String? matchedSpecies = item['matched_species'];
+    if (matchedSpecies != null && matchedSpecies.isNotEmpty) {
+      final species = SnakeDatabase.getSpeciesDetails(matchedSpecies, matchedSpecies);
+      if (species != null) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => SnakeDetailModal(snake: species, lang: lang),
+        );
+        return;
+      }
+    }
+
+    // Default Assessment Detail Modal
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AssessmentDetailModal(item: item, lang: lang),
     );
   }
 
@@ -784,5 +865,435 @@ class HomeScreen extends ConsumerWidget {
       result = result.replaceAll(english[i], bengali[i]);
     }
     return result;
+  }
+}
+
+class _AssessmentDetailModal extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final AppLanguage lang;
+
+  const _AssessmentDetailModal({required this.item, required this.lang});
+
+  String _toBengaliDigits(String input) {
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    String result = input;
+    for (int i = 0; i < english.length; i++) {
+      result = result.replaceAll(english[i], bengali[i]);
+    }
+    return result;
+  }
+
+  Future<void> _makeCall(String phoneNumber) async {
+    final Uri url = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool venomous = item['venomous'] == 1;
+    final date = DateTime.tryParse(item['timestamp'] ?? '') ?? DateTime.now();
+    final String dateFormatted = '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+    final rawType = item['type'] ?? 'Assessment';
+    final String typeStr = rawType == 'সাপ স্ক্যান' || rawType == 'সাপ সনাক্তকরণ' || rawType == 'Snake Identification'
+        ? lang.t('সাপ শনাক্তকরণ স্ক্যান', 'Snake Identification Scan')
+        : (rawType == 'লক্ষণ তালিকা' || rawType == 'লক্ষণ মূল্যায়ন' || rawType == 'Symptom Assessment'
+            ? lang.t('লক্ষণ ও তালিকা মূল্যায়ন', 'Symptoms & List Assessment')
+            : lang.t('জরুরি কামড় মূল্যায়ন', 'Emergency Bite Assessment'));
+
+    final double riskPct = (item['risk_percentage'] as num?)?.toDouble() ?? (venomous ? 85.0 : 15.0);
+    final String riskPctStr = lang.isBengali
+        ? '${_toBengaliDigits(riskPct.toStringAsFixed(0))}%'
+        : '${riskPct.toStringAsFixed(0)}%';
+
+    final String? matchedSpecies = item['matched_species'];
+
+    List<String> rawSymptoms = [];
+    if (item['symptoms'] != null) {
+      try {
+        if (item['symptoms'] is List) {
+          rawSymptoms = List<String>.from(item['symptoms']);
+        } else if (item['symptoms'] is String) {
+          final decoded = json.decode(item['symptoms']);
+          if (decoded is List) {
+            rawSymptoms = List<String>.from(decoded);
+          }
+        }
+      } catch (_) {}
+    }
+
+    final Map<String, String> symptomNamesBn = {
+      'hood_seen': 'সাপের ফণা দেখা গেছে',
+      'triangular_head': 'ত্রিকোণাকার মাথা ও সরু ঘাড়',
+      'distinct_pattern': 'স্পষ্ট ডোরাকাটা বা শিকল ছোপ',
+      'paddle_tail': 'বৈঠার মতো চ্যাপ্টা লেজ (সামুদ্রিক)',
+      'night_sleeping_bite': 'রাতে বিছানায় বা ঘুমের মধ্যে কামড় (কালাচ)',
+      'two_punctures': 'দুটি বিষদাঁতের ক্ষতচিহ্ন',
+      'bleeding_wound': 'ক্ষতস্থান থেকে অবিরাম রক্তপাত',
+      'severe_pain': 'তীব্র জ্বালাপোড়া ও ব্যথা',
+      'swelling': 'ক্ষতস্থান ও অঙ্গ দ্রুত ফুলে যাওয়া',
+      'blistering_necrosis': 'কালচে ফোস্কা বা চামড়া পচে যাওয়া',
+      'eyelid_droop': 'চোখের পাতা ঝুলে পড়া (Ptosis)',
+      'speech_swallowing_difficulty': 'কথা জড়িয়ে যাওয়া বা গিলতে কষ্ট',
+      'difficulty_breathing': 'শ্বাসকষ্ট ও দম বন্ধ ভাব',
+      'flaccid_paralysis': 'ঘাড় সোজা রাখতে না পারা ও পেশির অসাড়তা',
+      'spontaneous_bleeding': 'মাড়ি, নাক বা প্রস্রাবে রক্তপাত',
+      'abdominal_vomiting': 'তীব্র পেটব্যথা ও ক্রমাগত বমি',
+      'myalgia_dark_urine': 'সারা গায়ে তীব্র পেশি ব্যথা বা কালো প্রস্রাব',
+      'dizziness_shock': 'অতিরিক্ত ঘাম, মাথা ঘোরা বা জ্ঞান হারানো (শক)',
+    };
+
+    final Map<String, String> symptomNamesEn = {
+      'hood_seen': 'Snake raised head hood',
+      'triangular_head': 'Triangular head with narrow neck',
+      'distinct_pattern': 'Distinct bands or chain patterns',
+      'paddle_tail': 'Paddle-shaped flat tail (Sea snake)',
+      'night_sleeping_bite': 'Night bite while sleeping (Krait hallmark)',
+      'two_punctures': 'Two distinct fang punctures',
+      'bleeding_wound': 'Continuous wound bleeding',
+      'severe_pain': 'Severe local burning pain',
+      'swelling': 'Rapidly spreading edema/swelling',
+      'blistering_necrosis': 'Dark blistering or tissue necrosis',
+      'eyelid_droop': 'Drooping eyelids or double vision (Ptosis)',
+      'speech_swallowing_difficulty': 'Slurred speech or difficulty swallowing',
+      'difficulty_breathing': 'Difficulty breathing (Respiratory distress)',
+      'flaccid_paralysis': 'Broken neck sign & flaccid paralysis',
+      'spontaneous_bleeding': 'Spontaneous bleeding (gums, urine, nose)',
+      'abdominal_vomiting': 'Severe abdominal colic & persistent vomiting',
+      'myalgia_dark_urine': 'Severe muscle pain or dark cola urine',
+      'dizziness_shock': 'Cold sweating, severe dizziness or shock',
+    };
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppColors.outlineVariant,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+
+          // Header Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      venomous ? Icons.gpp_maybe_outlined : Icons.verified_user_outlined,
+                      color: venomous ? AppColors.error : AppColors.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      lang.t('মূল্যায়নের বিবরণ', 'Assessment Details'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.onSurfaceVariant),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Type & Timestamp Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              typeStr,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lang.t('মূল্যায়নের সময়: ${_toBengaliDigits(dateFormatted)}', 'Time: $dateFormatted'),
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: venomous ? AppColors.errorContainer : AppColors.primaryFixed,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            venomous ? lang.t('বিষধর', 'Venomous') : lang.t('অবিষধর', 'Non-Venomous'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: venomous ? AppColors.error : AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Risk Banner Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: venomous ? AppColors.errorContainer.withOpacity(0.4) : AppColors.primaryFixed.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: venomous ? AppColors.error.withOpacity(0.4) : AppColors.primary.withOpacity(0.4),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          venomous ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                          color: venomous ? AppColors.error : AppColors.primary,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                venomous
+                                    ? lang.t('উচ্চ ঝুঁকি - বিষধর সাপের বিষক্রিয়া', 'High Risk - Probable Envenomation')
+                                    : lang.t('কম ঝুঁকি - অবিষধর মূল্যায়ন', 'Low Risk - Non-Venomous Evaluation'),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: venomous ? AppColors.error : AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                lang.t('গণনাকৃত বিষাক্ততার ঝুঁকি: $riskPctStr', 'Calculated Toxicity Risk: $riskPctStr'),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (matchedSpecies != null && matchedSpecies.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.pets, color: AppColors.primary, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  lang.t('শনাক্তকৃত সাপের প্রজাতি', 'Identified Snake Species'),
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  matchedSpecies,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (rawSymptoms.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      lang.t('মূল্যায়নকৃত শারীরিক লক্ষণসমূহ', 'Evaluated Clinical Symptoms'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...rawSymptoms.map((key) {
+                      final title = lang.t(symptomNamesBn[key] ?? key, symptomNamesEn[key] ?? key);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: AppColors.error, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+
+                  const SizedBox(height: 18),
+
+                  // First Aid Steps
+                  Text(
+                    lang.t('জরুরী প্রাথমিক পদক্ষেপ', 'Emergency First Aid Protocols'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildStepItem(lang.t('ধাপ ১: রোগীকে শান্ত রাখুন এবং সম্পূর্ণ স্থির অবস্থায় শুইয়ে রাখুন যাতে বিষ দ্রুত না ছড়ায়।', 'Step 1: Keep the patient calm and completely still to delay venom spread.')),
+                        const Divider(height: 16),
+                        _buildStepItem(lang.t('ধাপ ২: আক্রান্ত হাত বা পা কার্ড বা স্কেল দিয়ে স্প্লিন্ট করে আলতো করে ব্যান্ডেজ দিয়ে বেঁধে স্থির রাখুন।', 'Step 2: Splint the affected limb and immobilize it with gentle bandaging.')),
+                        const Divider(height: 16),
+                        _buildStepItem(lang.t('ধাপ ৩: ক্ষতস্থান কাটা, বিষ চোষা, বরফ দেওয়া বা শক্ত দড়ি/টরনিকেট দিয়ে বাঁধা সম্পূর্ণ নিষেধ!', 'Step 3: Strictly NO cutting, suction, herbal remedies, or tight tourniquets!'), isWarning: true),
+                        const Divider(height: 16),
+                        _buildStepItem(lang.t('ধাপ ৪: কালবিলম্ব না করে রোগীকে দ্রুত অ্যান্টি-ভেনম সুবিধাসম্পন্ন হাসপাতালে নিয়ে যান।', 'Step 4: Transport immediately to the nearest antivenom-equipped hospital.')),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action buttons
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push('/hospital-radar');
+                    },
+                    icon: const Icon(Icons.local_hospital_outlined, size: 20),
+                    label: Text(
+                      lang.t('কাছের অ্যান্টি-ভেনম হাসপাতাল খুঁজুন', 'Find Nearest Antivenom Hospital'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.error, width: 1.5),
+                      foregroundColor: AppColors.error,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _makeCall('999'),
+                    icon: const Icon(Icons.phone_in_talk, size: 20),
+                    label: Text(
+                      lang.t('জরুরী হেল্পলাইন ৯৯৯ কল করুন', 'Call Emergency Helpline 999'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepItem(String text, {bool isWarning = false}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          isWarning ? Icons.cancel_outlined : Icons.check_circle_outline,
+          color: isWarning ? AppColors.error : AppColors.primary,
+          size: 18,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isWarning ? FontWeight.w600 : FontWeight.normal,
+              color: isWarning ? AppColors.error : AppColors.onSurface,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

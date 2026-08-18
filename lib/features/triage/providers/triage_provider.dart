@@ -30,13 +30,31 @@ class TriageNotifier extends StateNotifier<TriageState> {
   final Ref _ref;
 
   static final Map<String, bool> defaultSymptoms = {
+    // Snake Characteristics & Encounter Context
     'hood_seen': false,
-    'eyelid_droop': false,
-    'bleeding_wound': false,
-    'difficulty_breathing': false,
+    'triangular_head': false,
+    'distinct_pattern': false,
+    'paddle_tail': false,
+    'night_sleeping_bite': false,
+
+    // Bite Wound & Local Symptoms
     'two_punctures': false,
+    'bleeding_wound': false,
     'severe_pain': false,
     'swelling': false,
+    'blistering_necrosis': false,
+
+    // Neurotoxic Symptoms
+    'eyelid_droop': false,
+    'speech_swallowing_difficulty': false,
+    'difficulty_breathing': false,
+    'flaccid_paralysis': false,
+
+    // Hemotoxic, Systemic & Myotoxic Symptoms
+    'spontaneous_bleeding': false,
+    'abdominal_vomiting': false,
+    'myalgia_dark_urine': false,
+    'dizziness_shock': false,
   };
 
   TriageNotifier(this._ref) : super(TriageState(symptomAnswers: Map.from(defaultSymptoms)));

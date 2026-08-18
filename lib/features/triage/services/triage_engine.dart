@@ -73,40 +73,107 @@ class TriageEngine {
       );
     }
 
-    // Layer 2: Interactive Symptom Checklist
+    // Layer 2: Interactive Comprehensive Symptom & Characteristics Evaluation
     if (symptomAnswers != null && symptomAnswers.isNotEmpty) {
       double score = 0.0;
-      
-      // Calculate weighted score
-      if (symptomAnswers['hood_seen'] == true) score += 4.0;       // head hood (Cobra/Krait)
-      if (symptomAnswers['eyelid_droop'] == true) score += 4.5;    // neurotoxic symptom
-      if (symptomAnswers['bleeding_wound'] == true) score += 3.5;  // hemotoxic symptom
-      if (symptomAnswers['difficulty_breathing'] == true) score += 5.0; // respiratory failure
-      if (symptomAnswers['two_punctures'] == true) score += 3.0;   // fang punctures
-      if (symptomAnswers['severe_pain'] == true) score += 2.0;     // local envenomation
-      if (symptomAnswers['swelling'] == true) score += 2.5;        // local swelling
- 
-      if (score >= 4.0) {
+      final List<String> detectedRedFlagsBn = [];
+      final List<String> detectedRedFlagsEn = [];
+
+      // 1. Critical Red Flags (Direct life-threatening indicators)
+      if (symptomAnswers['eyelid_droop'] == true) {
+        score += 6.0;
+        detectedRedFlagsBn.add('চোখের পাতা ঝুলে পড়া (Ptosis)');
+        detectedRedFlagsEn.add('Drooping eyelids (Ptosis)');
+      }
+      if (symptomAnswers['difficulty_breathing'] == true) {
+        score += 7.0;
+        detectedRedFlagsBn.add('শ্বাসকষ্ট');
+        detectedRedFlagsEn.add('Respiratory distress');
+      }
+      if (symptomAnswers['speech_swallowing_difficulty'] == true) {
+        score += 6.0;
+        detectedRedFlagsBn.add('কথা জড়ানো বা গিলতে না পারা');
+        detectedRedFlagsEn.add('Slurred speech / swallowing difficulty');
+      }
+      if (symptomAnswers['flaccid_paralysis'] == true) {
+        score += 6.5;
+        detectedRedFlagsBn.add('ঘাড় সোজা রাখতে না পারা ও পেশির অসাড়তা');
+        detectedRedFlagsEn.add('Broken neck sign / flaccid paralysis');
+      }
+      if (symptomAnswers['spontaneous_bleeding'] == true) {
+        score += 6.5;
+        detectedRedFlagsBn.add('অস্বাভাবিক রক্তক্ষরণ (মাড়ি/প্রস্রাবে রক্ত)');
+        detectedRedFlagsEn.add('Spontaneous bleeding / Hematuria');
+      }
+      if (symptomAnswers['myalgia_dark_urine'] == true) {
+        score += 5.5;
+        detectedRedFlagsBn.add('তীব্র পেশি ব্যথা বা কালো প্রস্রাব');
+        detectedRedFlagsEn.add('Severe myalgia / Dark cola urine');
+      }
+      if (symptomAnswers['dizziness_shock'] == true) {
+        score += 5.5;
+        detectedRedFlagsBn.add('শকের লক্ষণ বা জ্ঞান হারানো');
+        detectedRedFlagsEn.add('Signs of shock / Loss of consciousness');
+      }
+      if (symptomAnswers['hood_seen'] == true) {
+        score += 5.0;
+        detectedRedFlagsBn.add('ফণা তোলা বিষধর সাপের উপস্থিতি');
+        detectedRedFlagsEn.add('Hooded venomous snake observed');
+      }
+      if (symptomAnswers['paddle_tail'] == true) {
+        score += 5.0;
+        detectedRedFlagsBn.add('সামুদ্রিক বিষধর সাপের লেজ');
+        detectedRedFlagsEn.add('Paddle-tailed sea snake');
+      }
+      if (symptomAnswers['night_sleeping_bite'] == true && symptomAnswers['abdominal_vomiting'] == true) {
+        score += 6.0;
+        detectedRedFlagsBn.add('রাতে ঘুমানোর সময় কামড় ও পেটব্যথা (কালাচ/কেউটের নিশ্চিত লক্ষণ)');
+        detectedRedFlagsEn.add('Night sleeping bite with abdominal colic (Krait pattern)');
+      }
+
+      // 2. High-Risk Local & Encounter Indicators
+      if (symptomAnswers['two_punctures'] == true) score += 3.5;
+      if (symptomAnswers['bleeding_wound'] == true) score += 4.0;
+      if (symptomAnswers['triangular_head'] == true) score += 3.5;
+      if (symptomAnswers['distinct_pattern'] == true) score += 2.5;
+      if (symptomAnswers['blistering_necrosis'] == true) score += 3.5;
+      if (symptomAnswers['swelling'] == true) score += 3.0;
+      if (symptomAnswers['severe_pain'] == true) score += 2.0;
+      if (symptomAnswers['abdominal_vomiting'] == true && symptomAnswers['night_sleeping_bite'] != true) score += 2.5;
+      if (symptomAnswers['night_sleeping_bite'] == true && symptomAnswers['abdominal_vomiting'] != true) score += 2.0;
+
+      final bool hasCriticalFlag = detectedRedFlagsBn.isNotEmpty;
+
+      if (hasCriticalFlag || score >= 3.5) {
+        final severity = (hasCriticalFlag || score >= 7.0) ? 'high' : 'medium';
+        final flagSummaryBn = hasCriticalFlag ? ' (সনাক্তকৃত জরুরি লক্ষণ: ${detectedRedFlagsBn.join(", ")})' : '';
+        final flagSummaryEn = hasCriticalFlag ? ' (Critical signs: ${detectedRedFlagsEn.join(", ")})' : '';
+
         return TriageResult(
           venomous: true,
-          severity: score >= 8.0 ? 'high' : 'medium',
-          reasonBn: 'শারীরিক লক্ষণ ও সাপের বিবরণ অনুযায়ী এটি বিষাক্ত সাপের কামড় হওয়ার সম্ভাবনা রয়েছে (স্কোর: ${score.toStringAsFixed(1)})।',
-          reasonEn: 'Based on symptoms and snake details, this is likely a venomous snake bite (Score: ${score.toStringAsFixed(1)}).',
+          severity: severity,
+          reasonBn: 'শারীরিক লক্ষণ ও সাপের বৈশিষ্ট্য বিশ্লেষণ অনুযায়ী এটি বিষাক্ত সাপের কামড় (স্কোর: ${score.toStringAsFixed(1)})$flagSummaryBn। অবিলম্বে অ্যান্টিভেনমযুক্ত জরুরি হাসপাতালে যান।',
+          reasonEn: 'Based on clinical symptoms and snake characteristics, this indicates a venomous snakebite (Score: ${score.toStringAsFixed(1)})$flagSummaryEn. Immediate hospital care is required.',
           firstAidBn: venomousFirstAidBn,
           firstAidEn: venomousFirstAidEn,
           fallbackLayer: 2,
-          confidence: score >= 8.0 ? 0.85 : 0.70,
+          confidence: hasCriticalFlag ? 0.95 : (score >= 7.0 ? 0.90 : 0.80),
         );
       } else {
+        final bool hasAnyInput = symptomAnswers.values.any((val) => val == true);
         return TriageResult(
           venomous: false,
           severity: 'low',
-          reasonBn: 'লক্ষণ বিশ্লেষণ করে বিষক্রিয়ার তেমন কোনো চিহ্ন পাওয়া যায়নি (স্কোর: ${score.toStringAsFixed(1)})। তবুও সতর্ক থাকুন।',
-          reasonEn: 'Symptom analysis did not detect significant signs of envenomation (Score: ${score.toStringAsFixed(1)}). Remain cautious.',
+          reasonBn: hasAnyInput
+              ? 'লক্ষণ ও বৈশিষ্ট্যে বিষক্রিয়ার সুস্পষ্ট সংকেত পাওয়া যায়নি (স্কোর: ${score.toStringAsFixed(1)})। সতর্কতা: কালাচ বা কিছু ভাইপারের লক্ষণ বিলম্বে (১২-২৪ ঘণ্টার মধ্যে) দেখা দিতে পারে। রোগীকে সার্বক্ষণিক পর্যবেক্ষণে রাখুন।'
+              : 'কোনো বিষাক্ত লক্ষণ বা শারীরিক জটিলতা পাওয়া যায়নি। সতর্কতা: পরবর্তী ২৪ ঘণ্টা রোগীকে সতর্ক পর্যবেক্ষণে রাখুন।',
+          reasonEn: hasAnyInput
+              ? 'Clinical symptoms and features do not show overt envenomation (Score: ${score.toStringAsFixed(1)}). Note: Krait/Viper symptoms may be delayed up to 12-24 hours. Keep patient under close observation.'
+              : 'No venomous characteristics or active symptoms reported. Observe the patient closely for the next 24 hours.',
           firstAidBn: standardFirstAidBn,
           firstAidEn: standardFirstAidEn,
           fallbackLayer: 2,
-          confidence: 0.90,
+          confidence: hasAnyInput ? 0.85 : 0.90,
         );
       }
     }
@@ -116,8 +183,8 @@ class TriageEngine {
     return TriageResult(
       venomous: true,
       severity: 'high',
-      reasonBn: 'পর্যপ্ত তথ্য পাওয়া যায়নি। জাতীয় গাইডলাইন অনুযায়ী জরুরি সতর্কতাবশত কামড়টিকে বিষাক্ত হিসেবে বিবেচনা করে হাসপাতালে রেফার করা হচ্ছে।',
-      reasonEn: 'Insufficient data available. Following national guidelines, the bite is conservatively treated as venomous, and the patient is referred to a hospital.',
+      reasonBn: 'পর্যাপ্ত তথ্য পাওয়া যায়নি। জাতীয় প্রটোকল অনুযায়ী জরুরি সতর্কতাবশত কামড়টিকে বিষাক্ত বিবেচনা করে হাসপাতালে রেফার করা হচ্ছে।',
+      reasonEn: 'Insufficient data available. Following medical safety guidelines, the bite is conservatively treated as venomous and referred to hospital.',
       firstAidBn: venomousFirstAidBn,
       firstAidEn: venomousFirstAidEn,
       fallbackLayer: 3,

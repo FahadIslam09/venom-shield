@@ -29,19 +29,53 @@ void main() {
 
     test('Symptom answers checklist scoring above threshold yields venomous triage', () {
       final symptomAnswers = {
-        'hood_seen': true,          // +4.0
+        'hood_seen': true,
         'eyelid_droop': false,
         'bleeding_wound': false,
-        'difficulty_breathing': false,
-        'two_punctures': false,
-        'severe_pain': false,
-        'swelling': false,
       };
 
       final result = engine.processTriage(symptomAnswers: symptomAnswers);
 
       expect(result.venomous, isTrue);
       expect(result.fallbackLayer, equals(2));
+    });
+
+    test('Critical Neurotoxic sign (ptosis) yields venomous emergency triage', () {
+      final symptomAnswers = {
+        'eyelid_droop': true,
+      };
+
+      final result = engine.processTriage(symptomAnswers: symptomAnswers);
+
+      expect(result.venomous, isTrue);
+      expect(result.severity, equals('high'));
+      expect(result.confidence, greaterThanOrEqualTo(0.90));
+    });
+
+    test('Night sleeping bite with abdominal colic (Krait pattern) yields venomous triage', () {
+      final symptomAnswers = {
+        'night_sleeping_bite': true,
+        'abdominal_vomiting': true,
+      };
+
+      final result = engine.processTriage(symptomAnswers: symptomAnswers);
+
+      expect(result.venomous, isTrue);
+      expect(result.severity, equals('high'));
+    });
+
+    test('All symptoms false yields non-venomous low risk triage with observation warning', () {
+      final symptomAnswers = {
+        'hood_seen': false,
+        'eyelid_droop': false,
+        'two_punctures': false,
+        'bleeding_wound': false,
+      };
+
+      final result = engine.processTriage(symptomAnswers: symptomAnswers);
+
+      expect(result.venomous, isFalse);
+      expect(result.severity, equals('low'));
     });
 
     test('Empty symptoms checklist yields venomous default fail-safe triage', () {

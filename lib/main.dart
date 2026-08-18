@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/database/database_helper.dart';
 import 'core/providers/locale_provider.dart';
+import 'features/scanner/services/snake_database.dart';
 import 'app.dart';
 
 void main() async {
@@ -20,6 +21,7 @@ void main() async {
     // Warm up database and await pending fonts in parallel
     final List<Future<dynamic>> warmUpFutures = [
       GoogleFonts.pendingFonts([GoogleFonts.hindSiliguri()]),
+      SnakeDatabase.initialize(),
     ];
     if (!kIsWeb) {
       warmUpFutures.add(DatabaseHelper.instance.database);

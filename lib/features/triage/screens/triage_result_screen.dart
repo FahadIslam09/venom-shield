@@ -81,7 +81,14 @@ class TriageResultScreen extends ConsumerWidget {
         .map((e) => lang.t(symptomNamesBn[e.key] ?? e.key, symptomNamesEn[e.key] ?? e.key))
         .toList();
 
-    final firstAidSteps = lang.isBengali ? result.firstAidBn : result.firstAidEn;
+    final speciesMatch = SnakeDatabase.getSpeciesDetails(
+      result.matchedSpeciesEn ?? '',
+      result.matchedSpeciesBn ?? '',
+    );
+    final List<String> rawFirstAid = lang.isBengali
+        ? (speciesMatch != null && speciesMatch.firstAidBn.isNotEmpty ? speciesMatch.firstAidBn : result.firstAidBn)
+        : (speciesMatch != null && speciesMatch.firstAidEn.isNotEmpty ? speciesMatch.firstAidEn : result.firstAidEn);
+    final firstAidSteps = rawFirstAid.isNotEmpty ? rawFirstAid : (lang.isBengali ? result.firstAidBn : result.firstAidEn);
 
     return Scaffold(
       backgroundColor: AppColors.background,

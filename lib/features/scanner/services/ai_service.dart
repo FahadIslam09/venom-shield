@@ -158,15 +158,68 @@ Return ONLY raw JSON. No markdown, no code blocks, no extra text.
         final cleanContent = _cleanJsonString(content);
         final Map<String, dynamic> jsonMap = json.decode(cleanContent);
         
-        // Override VLM venomous result using local herpetological reference database
+        // 1. Lookup detected snake in offline dataset
         final String speciesBn = jsonMap['species_bn'] as String? ?? '';
         final String speciesEn = jsonMap['species_en'] as String? ?? '';
         final bool rawVenomous = jsonMap['venomous'] == true || jsonMap['venomous'] == 1;
-        
-        final bool verifiedVenomous = SnakeDatabase.checkVenomous(speciesEn, speciesBn, rawVenomous);
-        jsonMap['venomous'] = verifiedVenomous;
-        if (!verifiedVenomous) {
-          jsonMap['danger_level'] = 'low';
+
+        final cachedSpecies = SnakeDatabase.getSpeciesDetails(speciesEn, speciesBn);
+
+        if (cachedSpecies != null) {
+          // Snake found in offline dataset: retrieve verified details directly without redundant generation
+          jsonMap['venomous'] = cachedSpecies.venomous;
+          jsonMap['danger_level'] = cachedSpecies.dangerLevel;
+          if (cachedSpecies.descriptionBn.isNotEmpty) {
+            jsonMap['description_bn'] = cachedSpecies.descriptionBn;
+          }
+          if (cachedSpecies.descriptionEn.isNotEmpty) {
+            jsonMap['description_en'] = cachedSpecies.descriptionEn;
+          }
+          if (cachedSpecies.firstAidBn.isNotEmpty) {
+            jsonMap['first_aid_bn'] = cachedSpecies.firstAidBn;
+          }
+          if (cachedSpecies.firstAidEn.isNotEmpty) {
+            jsonMap['first_aid_en'] = cachedSpecies.firstAidEn;
+          }
+        } else {
+          // Not yet in dataset: override venomous flag if known, and cache this newly generated snake
+          final bool verifiedVenomous = SnakeDatabase.checkVenomous(speciesEn, speciesBn, rawVenomous);
+          jsonMap['venomous'] = verifiedVenomous;
+          if (!verifiedVenomous) {
+            jsonMap['danger_level'] = 'low';
+          }
+
+          if (speciesEn.isNotEmpty && speciesEn != 'Unknown Species') {
+            final List<String> faBn = (jsonMap['first_aid_bn'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            final List<String> faEn = (jsonMap['first_aid_en'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            SnakeDatabase.registerDynamicSpecies(
+              SnakeSpecies(
+                scientificName: speciesEn,
+                speciesEn: speciesEn,
+                speciesBn: speciesBn,
+                englishKeywords: [speciesEn.toLowerCase()],
+                banglaKeywords: [speciesBn.toLowerCase()],
+                venomous: verifiedVenomous,
+                dangerLevel: jsonMap['danger_level'] as String? ?? (verifiedVenomous ? 'high' : 'low'),
+                descriptionBn: jsonMap['description_bn'] as String? ?? '',
+                descriptionEn: jsonMap['description_en'] as String? ?? '',
+                biteEffectsBn: jsonMap['description_bn'] as String? ?? '',
+                biteEffectsEn: jsonMap['description_en'] as String? ?? '',
+                symptomsBn: '',
+                symptomsEn: '',
+                progressionBn: '',
+                progressionEn: '',
+                fatalityBn: '',
+                fatalityEn: '',
+                firstAidBn: faBn,
+                firstAidEn: faEn,
+                actionsBn: '',
+                actionsEn: '',
+                emergencyBn: '',
+                emergencyEn: '',
+              ),
+            );
+          }
         }
         
         return ScanResult.fromJson(jsonMap);

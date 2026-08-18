@@ -58,6 +58,14 @@ class DatabaseHelper {
       )
     ''');
 
+    // Ensure cached_snakes table exists for dynamic offline snake caching
+    await _database!.execute('''
+      CREATE TABLE IF NOT EXISTS cached_snakes (
+        scientific_name TEXT PRIMARY KEY,
+        data_json TEXT NOT NULL
+      )
+    ''');
+
     // Seed hospitals table if it is currently empty
     final countResult = Sqflite.firstIntValue(await _database!.rawQuery('SELECT COUNT(*) FROM hospitals'));
     if (countResult == 0) {
@@ -341,5 +349,44 @@ class DatabaseHelper {
       return maps.first['value'] as String;
     }
     return null;
+  }
+
+  // --- Dynamic Cached Snakes Persistent Storage ---
+  Future<void> saveCachedSnake(String scientificName, String dataJson) async {
+    if (kIsWeb) {
+      try {
+        final existingRaw = WebLocalStorage.load('custom_cached_snakes');
+        List<dynamic> list = existingRaw != null ? json.decode(existingRaw) : [];
+        list.removeWhere((item) => item['scientific_name'] == scientificName);
+        list.add({'scientific_name': scientificName, 'data_json': dataJson});
+        WebLocalStorage.save('custom_cached_snakes', json.encode(list));
+      } catch (_) {}
+      return;
+    }
+    final db = await database;
+    await db.insert(
+      'cached_snakes',
+      {
+        'scientific_name': scientificName,
+        'data_json': dataJson,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<String>> getCachedSnakes() async {
+    if (kIsWeb) {
+      try {
+        final existingRaw = WebLocalStorage.load('custom_cached_snakes');
+        if (existingRaw != null) {
+          final List<dynamic> list = json.decode(existingRaw);
+          return list.map((e) => e['data_json'].toString()).toList();
+        }
+      } catch (_) {}
+      return [];
+    }
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('cached_snakes');
+    return maps.map((row) => row['data_json'] as String).toList();
   }
 }

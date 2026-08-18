@@ -1,10 +1,22 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import '../../../../core/database/database_helper.dart';
+
 class SnakeSpecies {
   final String scientificName;
+  final String speciesEn;
+  final String speciesBn;
   final List<String> englishKeywords;
   final List<String> banglaKeywords;
   final bool venomous;
+  final String dangerLevel;
+  final bool antivenomAvailable;
+  final bool isBangladeshNative;
+  final String region;
 
   // Medical information fields
+  final String descriptionBn;
+  final String descriptionEn;
   final String biteEffectsBn;
   final String biteEffectsEn;
   final String symptomsBn;
@@ -13,6 +25,8 @@ class SnakeSpecies {
   final String progressionEn;
   final String fatalityBn;
   final String fatalityEn;
+  final List<String> firstAidBn;
+  final List<String> firstAidEn;
   final String actionsBn;
   final String actionsEn;
   final String emergencyBn;
@@ -20,9 +34,17 @@ class SnakeSpecies {
 
   const SnakeSpecies({
     required this.scientificName,
+    this.speciesEn = '',
+    this.speciesBn = '',
     required this.englishKeywords,
     required this.banglaKeywords,
     required this.venomous,
+    this.dangerLevel = 'medium',
+    this.antivenomAvailable = false,
+    this.isBangladeshNative = true,
+    this.region = 'Bangladesh / South Asia',
+    this.descriptionBn = '',
+    this.descriptionEn = '',
     required this.biteEffectsBn,
     required this.biteEffectsEn,
     required this.symptomsBn,
@@ -31,21 +53,127 @@ class SnakeSpecies {
     required this.progressionEn,
     required this.fatalityBn,
     required this.fatalityEn,
+    this.firstAidBn = const [],
+    this.firstAidEn = const [],
     required this.actionsBn,
     required this.actionsEn,
     required this.emergencyBn,
     required this.emergencyEn,
   });
+
+  factory SnakeSpecies.fromJson(Map<String, dynamic> json) {
+    // Parse aliases / keywords
+    final List<String> enAliases = (json['aliases_en'] as List<dynamic>?)
+            ?.map((e) => e.toString().toLowerCase())
+            .toList() ??
+        [];
+    final List<String> bnAliases = (json['aliases_bn'] as List<dynamic>?)
+            ?.map((e) => e.toString().toLowerCase())
+            .toList() ??
+        [];
+
+    final sciName = json['scientific_name'] as String? ?? '';
+    final specEn = json['species_en'] as String? ?? '';
+    final specBn = json['species_bn'] as String? ?? '';
+
+    if (sciName.isNotEmpty && !enAliases.contains(sciName.toLowerCase())) {
+      enAliases.add(sciName.toLowerCase());
+    }
+    if (specEn.isNotEmpty && !enAliases.contains(specEn.toLowerCase())) {
+      enAliases.add(specEn.toLowerCase());
+    }
+    if (specBn.isNotEmpty && !bnAliases.contains(specBn.toLowerCase())) {
+      bnAliases.add(specBn.toLowerCase());
+    }
+
+    final List<String> faBn = (json['first_aid_bn'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final List<String> faEn = (json['first_aid_en'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    return SnakeSpecies(
+      scientificName: sciName,
+      speciesEn: specEn,
+      speciesBn: specBn,
+      englishKeywords: enAliases,
+      banglaKeywords: bnAliases,
+      venomous: json['venomous'] == true || json['venomous'] == 1,
+      dangerLevel: json['danger_level'] as String? ?? (json['venomous'] == true ? 'high' : 'low'),
+      antivenomAvailable: json['antivenom_available'] == true || json['antivenom_available'] == 1,
+      isBangladeshNative: json['is_bangladesh_native'] != false,
+      region: json['region'] as String? ?? 'Bangladesh / South Asia',
+      descriptionBn: json['description_bn'] as String? ?? '',
+      descriptionEn: json['description_en'] as String? ?? '',
+      biteEffectsBn: json['bite_effects_bn'] as String? ?? '',
+      biteEffectsEn: json['bite_effects_en'] as String? ?? '',
+      symptomsBn: json['symptoms_bn'] as String? ?? '',
+      symptomsEn: json['symptoms_en'] as String? ?? '',
+      progressionBn: json['progression_bn'] as String? ?? '',
+      progressionEn: json['progression_en'] as String? ?? '',
+      fatalityBn: json['fatality_bn'] as String? ?? '',
+      fatalityEn: json['fatality_en'] as String? ?? '',
+      firstAidBn: faBn,
+      firstAidEn: faEn,
+      actionsBn: json['actions_bn'] as String? ?? '',
+      actionsEn: json['actions_en'] as String? ?? '',
+      emergencyBn: json['emergency_bn'] as String? ?? '',
+      emergencyEn: json['emergency_en'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'scientific_name': scientificName,
+      'species_en': speciesEn,
+      'species_bn': speciesBn,
+      'aliases_en': englishKeywords,
+      'aliases_bn': banglaKeywords,
+      'venomous': venomous,
+      'danger_level': dangerLevel,
+      'antivenom_available': antivenomAvailable,
+      'is_bangladesh_native': isBangladeshNative,
+      'region': region,
+      'description_bn': descriptionBn,
+      'description_en': descriptionEn,
+      'bite_effects_bn': biteEffectsBn,
+      'bite_effects_en': biteEffectsEn,
+      'symptoms_bn': symptomsBn,
+      'symptoms_en': symptomsEn,
+      'progression_bn': progressionBn,
+      'progression_en': progressionEn,
+      'fatality_bn': fatalityBn,
+      'fatality_en': fatalityEn,
+      'first_aid_bn': firstAidBn,
+      'first_aid_en': firstAidEn,
+      'actions_bn': actionsBn,
+      'actions_en': actionsEn,
+      'emergency_bn': emergencyBn,
+      'emergency_en': emergencyEn,
+    };
+  }
 }
 
 class SnakeDatabase {
-  static const List<SnakeSpecies> _speciesList = [
+  static List<SnakeSpecies> _loadedDataset = [];
+  static final List<SnakeSpecies> _runtimeCache = [];
+  static bool _isInitialized = false;
+
+  /// Built-in fallback database catalog for core Bangladesh snakes
+  static const List<SnakeSpecies> _coreCatalog = [
     // Russell's Viper (Daboia russelii) / চন্দ্রবোড়া
     SnakeSpecies(
       scientificName: 'Daboia russelii',
+      speciesEn: "Russell's Viper",
+      speciesBn: 'চন্দ্রবোড়া',
       englishKeywords: ['russell\'s viper', 'daboia russelii', 'russel', 'viper'],
       banglaKeywords: ['চন্দ্রবোড়া', 'রাসেলস ভাইপার', 'চন্দ্রবোড়া'],
       venomous: true,
+      dangerLevel: 'high',
+      antivenomAvailable: true,
       biteEffectsBn: 'চন্দ্রবোড়া অত্যন্ত বিষধর সাপ। এর কামড়ে প্রধানত রক্তক্ষরণজনিত বিষক্রিয়া (Haemotoxin) ঘটে, যা রক্তকণিকা ও রক্তনালী ধ্বংস করে।',
       biteEffectsEn: 'Russell\'s Viper is highly venomous. Its bite primarily causes hemotoxic envenomation, destroying blood cells and causing systemic damage to blood vessels.',
       symptomsBn: 'তীব্র স্থানীয় ব্যথা, কামড়ের স্থান দ্রুত ফুলে যাওয়া, রক্তপাত (মাড়ি, প্রস্রাব বা ক্ষতস্থান দিয়ে), ফোস্কা পড়া এবং টিস্যু নষ্ট হওয়া (Necrosis)।',
@@ -62,9 +190,13 @@ class SnakeDatabase {
     // Spectacled Cobra (Naja naja) / গোখরা
     SnakeSpecies(
       scientificName: 'Naja naja',
+      speciesEn: 'Spectacled Cobra',
+      speciesBn: 'খৈয়া গোখরা',
       englishKeywords: ['spectacled cobra', 'naja naja', 'indian cobra', 'cobra'],
       banglaKeywords: ['গোখরা', 'খৈয়া গোখরা', 'কোবরা'],
       venomous: true,
+      dangerLevel: 'high',
+      antivenomAvailable: true,
       biteEffectsBn: 'গোখরা সাপের বিষ মূলত স্নায়ুবিধ্বংসী (Neurotoxin), যা মস্তিস্ক ও স্নায়ুতন্ত্রের কার্যক্ষমতা বন্ধ করে শ্বাসযন্ত্রকে পঙ্গু করে দেয়।',
       biteEffectsEn: 'Cobra venom is primarily neurotoxic, blocking neurotransmission and paralyzing respiratory muscles.',
       symptomsBn: 'কামড়ের স্থানে হালকা জ্বালাপোড়া, চোখের পাতা ভারি হয়ে যাওয়া (Ptosis), গিলতে ও কথা বলতে সমস্যা হওয়া এবং মাংসপেশীর দুর্বলতা।',
@@ -81,9 +213,13 @@ class SnakeDatabase {
     // Monocled Cobra (Naja kaouthia) / মনোকলড গোখরা
     SnakeSpecies(
       scientificName: 'Naja kaouthia',
+      speciesEn: 'Monocled Cobra',
+      speciesBn: 'পদ্ম গোখরা',
       englishKeywords: ['monocled cobra', 'naja kaouthia'],
-      banglaKeywords: ['মনোকলড', 'মনোকলড গোখরা'],
+      banglaKeywords: ['মনোকলড', 'মনোকলড গোখরা', 'পদ্ম গোখরা'],
       venomous: true,
+      dangerLevel: 'high',
+      antivenomAvailable: true,
       biteEffectsBn: 'মনোকলড গোখরা সাপের বিষ মূলত স্নায়ুবিধ্বংসী (Neurotoxin), যা মস্তিস্ক ও স্নায়ুতন্ত্রের কার্যক্ষমতা বন্ধ করে শ্বাসযন্ত্রকে পঙ্গু করে দেয়।',
       biteEffectsEn: 'Monocled Cobra venom is primarily neurotoxic, blocking neurotransmission and paralyzing respiratory muscles.',
       symptomsBn: 'কামড়ের স্থানে হালকা জ্বালাপোড়া, চোখের পাতা ভারি হয়ে যাওয়া (Ptosis), গিলতে ও কথা বলতে সমস্যা হওয়া এবং মাংসপেশীর দুর্বলতা।',
@@ -100,9 +236,13 @@ class SnakeDatabase {
     // King Cobra (Ophiophagus hannah) / কিং কোবরা
     SnakeSpecies(
       scientificName: 'Ophiophagus hannah',
+      speciesEn: 'King Cobra',
+      speciesBn: 'শঙ্খচূড়',
       englishKeywords: ['king cobra', 'ophiophagus hannah'],
-      banglaKeywords: ['কিং কোবরা', 'শঙ্খচূড়'],
+      banglaKeywords: ['কিং কোবরা', 'শঙ্খচূড়', 'রাজগোখরা'],
       venomous: true,
+      dangerLevel: 'high',
+      antivenomAvailable: true,
       biteEffectsBn: 'কিং কোবরা বিশাল পরিমাণ তীব্র নিউরোটক্সিন ও কার্ডিওটক্সিন বিষ প্রয়োগ করে, যা অতি দ্রুত স্নায়ুতন্ত্র ও হৃদযন্ত্র নিষ্ক্রিয় করে।',
       biteEffectsEn: 'King Cobra delivers massive quantities of highly potent neurotoxins and cardiotoxins, rapidly shutting down the nervous system and heart.',
       symptomsBn: 'তীব্র স্থানীয় ব্যথা, ঝিমুনি, পেশীর পঙ্গুত্ব, হৃদস্পন্দন কমে যাওয়া এবং দ্রুত শ্বাসকষ্ট।',
@@ -116,12 +256,16 @@ class SnakeDatabase {
       emergencyBn: 'এটি সর্বোচ্চ জরুরি অবস্থা। তাৎক্ষণিক অ্যান্টি-ভেনম এবং লাইফ-সাপোর্ট চিকিৎসা অপরিহার্য।',
       emergencyEn: 'This is a medical emergency of the highest order. Immediate anti-venom and respiratory support are mandatory.',
     ),
-    // Common Krait (Bungarus caeruleus) / কালকেউটে / কমন ক্রেইট
+    // Common Krait (Bungarus caeruleus) / কালকেউটে
     SnakeSpecies(
       scientificName: 'Bungarus caeruleus',
+      speciesEn: 'Common Krait',
+      speciesBn: 'কালকেউটে',
       englishKeywords: ['common krait', 'bungarus caeruleus', 'krait'],
       banglaKeywords: ['কালকেউটে', 'কমন ক্রেইট', 'কেউটে'],
       venomous: true,
+      dangerLevel: 'high',
+      antivenomAvailable: true,
       biteEffectsBn: 'কালাচ বা কেউটে সাপের বিষ অত্যন্ত শক্তিশালী স্নায়ুবিধ্বংসী (Neurotoxin)। এর কামড় অনেক সময় ব্যথাহীন হয় কিন্তু বিষক্রিয়া চরম মারাত্মক।',
       biteEffectsEn: 'Krait venom is a highly potent pre-synaptic neurotoxin. Bites are often painless or occur during sleep, but envenomation is extremely severe.',
       symptomsBn: 'পেটে তীব্র ব্যথা, গাঁটে ব্যথা, মাংসপেশী অবশ হওয়া, চোখের পাতা পড়ে যাওয়া এবং কথা বলার ক্ষমতা হারিয়ে ফেলা।',
@@ -135,89 +279,16 @@ class SnakeDatabase {
       emergencyBn: 'ব্যথা বা কামড়ের দাগ না থাকলেও কামড় দেওয়ার সামান্যতম সন্দেহে অতি দ্রুত অ্যান্টি-ভেনমযুক্ত হাসপাতালে যান।',
       emergencyEn: 'Seek emergency hospitalization immediately even if there is no pain or visible puncture mark.',
     ),
-    // Banded Krait (Bungarus fasciatus) / পদ্মগোখরা / শঙ্খিনী
-    SnakeSpecies(
-      scientificName: 'Bungarus fasciatus',
-      englishKeywords: ['banded krait', 'bungarus fasciatus'],
-      banglaKeywords: ['পদ্মগোখরা', 'শঙ্খিনী'],
-      venomous: true,
-      biteEffectsBn: 'পদ্মগোখরা বা শঙ্খিনী সাপের বিষ অত্যন্ত শক্তিশালী স্নায়ুবিধ্বংসী (Neurotoxin)। এর কামড় অনেক সময় ব্যথাহীন হয় কিন্তু বিষক্রিয়া চরম মারাত্মক।',
-      biteEffectsEn: 'Banded Krait venom is a highly potent neurotoxin. Bites are often painless but envenomation is extremely severe.',
-      symptomsBn: 'পেটে তীব্র ব্যথা, গাঁটে ব্যথা, মাংসপেশী অবশ হওয়া, চোখের পাতা পড়ে যাওয়া এবং কথা বলার ক্ষমতা হারিয়ে ফেলা।',
-      symptomsEn: 'Severe abdominal cramps, joint pain, muscular paralysis, drooping eyelids, and loss of voice or ability to swallow.',
-      progressionBn: 'কামড়ের কয়েক ঘন্টা পর লক্ষণ প্রকাশ পেতে পারে এবং হঠাৎ করে রোগীর শ্বাসকষ্ট শুরু হতে পারে।',
-      progressionEn: 'Symptoms may be delayed by several hours, followed by sudden and rapid onset of complete respiratory paralysis.',
-      fatalityBn: 'অত্যন্ত মারাত্মক। চিকিৎসা না করালে শ্বাসযন্ত্র সম্পূর্ণ নিষ্ক্রিয় হয়ে নিশ্চিত মৃত্যু ডেকে আনে।',
-      fatalityEn: 'Extremely fatal. Induces complete diaphragm failure and death by asphyxiation if untreated.',
-      actionsBn: 'রোগীকে ঘুমাতে দেবেন না। শান্ত রাখুন এবং আক্রান্ত অঙ্গ স্প্লিন্ট দিয়ে স্থির করে বাঁধুন।',
-      actionsEn: 'Keep the patient awake and calm. Immobilize the bitten limb using splints.',
-      emergencyBn: 'ব্যথা বা কামড়ের দাগ না থাকলেও কামড় দেওয়ার সামান্যতম সন্দেহে অতি দ্রুত অ্যান্টি-ভেনমযুক্ত হাসপাতালে যান।',
-      emergencyEn: 'Seek emergency hospitalization immediately even if there is no pain or visible puncture mark.',
-    ),
-    // Green Pit Viper (Trimeresurus spp.) / সবুজ বোড়া
-    SnakeSpecies(
-      scientificName: 'Trimeresurus',
-      englishKeywords: ['green pit viper', 'trimeresurus', 'pit viper'],
-      banglaKeywords: ['সবুজ বোড়া', 'সবুজ বোড়া', 'পিট ভাইপার'],
-      venomous: true,
-      biteEffectsBn: 'সবুজ বোড়া সাপের বিষ মূলত রক্তক্ষরণকারী (Hemotoxin), যা কামড়ের ক্ষতস্থানে তীব্র প্রতিক্রিয়া সৃষ্টি করে।',
-      biteEffectsEn: 'Green Pit Viper venom is primarily hemotoxic, causing painful local tissue damage and mild systemic effects.',
-      symptomsBn: 'কামড়ের স্থান ফুলে লাল হওয়া, দীর্ঘস্থায়ী জ্বালাপোড়া ও মাঝারি রক্তপাত।',
-      symptomsEn: 'Severe local swelling, discoloration, persistent throbbing pain, and localized bleeding.',
-      progressionBn: 'ঘন্টার পর ঘন্টা ক্ষতস্থান ফুলে যেতে থাকে এবং সংলগ্ন অংশে তরল জমে কালচে হয়ে যেতে পারে।',
-      progressionEn: 'Swelling progresses locally over several hours and may cause localized blistering or bruising.',
-      fatalityBn: 'মাঝারি ঝুঁকি। সাধারণত সরাসরি প্রাণঘাতী নয়, তবে টিস্যু বা অঙ্গের ক্ষতি এড়াতে চিকিৎসকের তত্ত্বাবধান প্রয়োজন।',
-      fatalityEn: 'Moderate severity. Rarely fatal to humans, but medical evaluation is required to manage tissue damage.',
-      actionsBn: 'ক্ষতস্থান নাড়াচাড়া করবেন না। কোনো বরফ বা কেমিক্যাল লাগাবেন না। আক্রান্ত অংশ সাবান-পানি দিয়ে ধুয়ে রাখুন।',
-      actionsEn: 'Immobilize the area. Do not apply ice, suction, or traditional remedies. Wash with clean water.',
-      emergencyBn: 'অতিরিক্ত ফোলা বা তীব্র ব্যথা প্রতিরোধ এবং ক্ষত পর্যবেক্ষণের জন্য হাসপাতালে ভর্তি হওয়া আবশ্যক।',
-      emergencyEn: 'Hospital admission is recommended to monitor swelling and manage potential local complications.',
-    ),
-    // Mountain Pit Viper (Ovophis monticola) / পাহাড়ি বোড়া
-    SnakeSpecies(
-      scientificName: 'Ovophis monticola',
-      englishKeywords: ['mountain pit viper', 'ovophis monticola'],
-      banglaKeywords: ['পাহাড়ি বোড়া', 'পাহাড়ি বোড়া'],
-      venomous: true,
-      biteEffectsBn: 'পাহাড়ি বোড়া সাপের বিষ মূলত রক্তক্ষরণকারী (Hemotoxin), যা কামড়ের ক্ষতস্থানে তীব্র প্রতিক্রিয়া সৃষ্টি করে।',
-      biteEffectsEn: 'Mountain Pit Viper venom is primarily hemotoxic, causing painful local tissue damage and mild systemic effects.',
-      symptomsBn: 'কামড়ের স্থান ফুলে লাল হওয়া, দীর্ঘস্থায়ী জ্বালাপোড়া ও মাঝারি রক্তপাত।',
-      symptomsEn: 'Severe local swelling, discoloration, persistent throbbing pain, and localized bleeding.',
-      progressionBn: 'ঘন্টার পর ঘন্টা ক্ষতস্থান ফুলে যেতে থাকে এবং সংলগ্ন অংশে তরল জমে কালচে হয়ে যেতে পারে।',
-      progressionEn: 'Swelling progresses locally over several hours and may cause localized blistering or bruising.',
-      fatalityBn: 'মাঝারি ঝুঁকি। সাধারণত সরাসরি প্রাণঘাতী নয়, তবে টিস্যু বা অঙ্গের ক্ষতি এড়াতে চিকিৎসকের তত্ত্বাবধান প্রয়োজন।',
-      fatalityEn: 'Moderate severity. Rarely fatal to humans, but medical evaluation is required to manage tissue damage.',
-      actionsBn: 'ক্ষতস্থান নাড়াচাড়া করবেন না। কোনো বরফ বা কেমিক্যাল লাগাবেন না। আক্রান্ত অংশ সাবান-পানি দিয়ে ধুয়ে রাখুন।',
-      actionsEn: 'Immobilize the area. Do not apply ice, suction, or traditional remedies. Wash with clean water.',
-      emergencyBn: 'অতিরিক্ত ফোলা বা তীব্র ব্যথা প্রতিরোধ এবং ক্ষত পর্যবেক্ষণের জন্য হাসপাতালে ভর্তি হওয়া আবশ্যক।',
-      emergencyEn: 'Hospital admission is recommended to monitor swelling and manage potential local complications.',
-    ),
-    // Red-necked Keelback (Rhabdophis subminiatus) / লালঘাড় ঢোড়া
-    SnakeSpecies(
-      scientificName: 'Rhabdophis subminiatus',
-      englishKeywords: ['red-necked keelback', 'rhabdophis subminiatus'],
-      banglaKeywords: ['লালঘাড় ঢোড়া', 'লালঘাড়', 'লালঘাড়'],
-      venomous: true,
-      biteEffectsBn: 'লালঘাড় ঢোড়া সাপের লালাগ্রন্থিতে অত্যন্ত তীব্র বিষ থাকে যা মারাত্মক রক্তক্ষরণ (Hemotoxin) ঘটাতে পারে।',
-      biteEffectsEn: 'Red-necked Keelback possesses highly toxic saliva that can cause severe hemorrhagic (hemotoxic) envenomation.',
-      symptomsBn: 'ক্ষতস্থান থেকে একটানা রক্তক্ষরণ, মাথাব্যথা, অভ্যন্তরীণ রক্তপাত এবং প্রস্রাবের সাথে রক্ত যাওয়া।',
-      symptomsEn: 'Continuous bleeding from the bite wound, headache, internal hemorrhaging, and blood in the urine.',
-      progressionBn: 'বিষক্রিয়ার লক্ষণ প্রকাশ পেতে কয়েক ঘন্টা লাগতে পারে, তবে শুরু হওয়ার পর তা দ্রুত কিডনি ও রক্তনালীকে অকেজো করে ফেলে।',
-      progressionEn: 'Onset of symptoms can be delayed by several hours, but once started, it rapidly leads to renal failure and severe internal clotting dysfunction.',
-      fatalityBn: 'চিকিৎসা না করালে এটি চরম বিপজ্জনক এবং প্রাণঘাতী হতে পারে।',
-      fatalityEn: 'Untreated bites can be extremely dangerous and fatal.',
-      actionsBn: 'ক্ষতস্থান সাবান ও জল দিয়ে হালকাভাবে ধুয়ে ফেলুন। ক্ষতস্থান কাটার চেষ্টা বা শক্ত বাঁধন দেওয়া নিষেধ।',
-      actionsEn: 'Gently wash the wound with soap and water. Do not cut the wound or apply tight tourniquets.',
-      emergencyBn: 'রক্তক্ষরণের কোনো লক্ষণ দেখা দেওয়া মাত্র দ্রুত বিশেষায়িত হাসপাতালে গিয়ে চিকিৎসকের পরামর্শ নিন।',
-      emergencyEn: 'Seek specialized medical care immediately if any signs of bleeding appear.',
-    ),
-    
-    // Indian Rock Python (Python molurus) / অজগর
+    // Non-Venomous Python (Python molurus)
     SnakeSpecies(
       scientificName: 'Python molurus',
+      speciesEn: 'Indian Rock Python',
+      speciesBn: 'অজগর',
       englishKeywords: ['indian rock python', 'python molurus', 'python'],
       banglaKeywords: ['অজগর', 'পাইথন', 'রক পাইথন'],
       venomous: false,
+      dangerLevel: 'low',
+      antivenomAvailable: false,
       biteEffectsBn: 'অজগর সম্পূর্ণ বিষহীন সাপ। এরা শিকারকে পেঁচিয়ে শ্বাসরোধ করে মারে, কোনো বিষদাঁত বা বিষ গ্রন্থি থাকে না।',
       biteEffectsEn: 'Pythons are entirely non-venomous. They kill prey by constriction and possess no venom glands or fangs.',
       symptomsBn: 'কামড়ে ছোট আঁচড় বা ক্ষত হতে পারে, যাতে সাময়িক ব্যথা ও মৃদু বাহ্যিক রক্তপাত হতে পারে।',
@@ -231,31 +302,16 @@ class SnakeDatabase {
       emergencyBn: 'জরুরি অ্যান্টি-ভেনম বা বিষক্রিয়ার চিকিৎসার প্রয়োজন নেই। সাধারণ ক্ষত পরিচর্যা করলেই চলবে।',
       emergencyEn: 'Emergency anti-venom treatment is not required. Treat as a standard minor wound.',
     ),
-    // Reticulated Python (Malayopython reticulatus) / জালি অজগর
-    SnakeSpecies(
-      scientificName: 'Malayopython reticulatus',
-      englishKeywords: ['reticulated python', 'malayopython reticulatus'],
-      banglaKeywords: ['জালি অজগর'],
-      venomous: false,
-      biteEffectsBn: 'জালি অজগর সম্পূর্ণ অবিষধর সাপ। এরা পেশীবহুল শরীরের চাপে শিকারকে পেঁচিয়ে কাবু করে, কোনো বিষগ্রন্থি বা বিষদাঁত থাকে না।',
-      biteEffectsEn: 'Reticulated Python is entirely non-venomous. It uses powerful muscular constriction to overpower prey and has no venom.',
-      symptomsBn: 'কামড়ে ছোট সাধারণ দাঁতের আঁচড় বসতে পারে, যাতে মৃদু ব্যথা ও বাহ্যিক রক্তপাত হতে পারে।',
-      symptomsEn: 'Bites can leave superficial rows of teeth marks causing minor pain and local bleeding.',
-      progressionBn: 'সাধারণ ইনফেকশন ছাড়া অন্য কোনো বিষক্রিয়াজনিত জটিলতা হওয়ার সুযোগ নেই।',
-      progressionEn: 'Aside from minor infection risks, no toxic or systemic progression will occur.',
-      fatalityBn: 'অবিষধর। এতে কোনো বিষক্রিয়ার ঝুঁকি নেই।',
-      fatalityEn: 'Non-venomous. There is no risk of envenomation.',
-      actionsBn: 'ক্ষতস্থান সাবান ও হালকা গরম জল দিয়ে পরিষ্কার করে ধুয়ে নিন। সংক্রমণ রোধে অ্যান্টিসেপ্টিক ক্রিম লাগান।',
-      actionsEn: 'Wash the wound thoroughly with soap and warm water. Apply antiseptic cream to prevent infection.',
-      emergencyBn: 'জরুরি অ্যান্টি-ভেনমের প্রয়োজন নেই। তবে ক্ষত গভীর হলে চিকিৎসকের পরামর্শে ড্রেসিং করান।',
-      emergencyEn: 'No emergency anti-venom is needed. Seek local wound care if the bite is deep.',
-    ),
     // Oriental Rat Snake (Ptyas mucosa) / ধামন
     SnakeSpecies(
       scientificName: 'Ptyas mucosa',
+      speciesEn: 'Oriental Rat Snake',
+      speciesBn: 'ধামন সাপ',
       englishKeywords: ['oriental rat snake', 'ptyas mucosa', 'rat snake', 'ptyas'],
-      banglaKeywords: ['ধামন', 'ধামনা সাপ'],
+      banglaKeywords: ['ধামন', 'ধামনা সাপ', 'দারাজ'],
       venomous: false,
+      dangerLevel: 'low',
+      antivenomAvailable: false,
       biteEffectsBn: 'ধামন সম্পূর্ণ বিষহীন সাপ। ফসলের ক্ষতিসাধনকারী ইঁদুর খেয়ে এটি কৃষকের পরম বন্ধু হিসেবে কাজ করে।',
       biteEffectsEn: 'The Rat Snake is entirely non-venomous. It plays a critical role in controlling agricultural rodent pests.',
       symptomsBn: 'কামড়ের ফলে সামান্য আঁচড় হতে পারে, যাতে অতি সামান্য রক্তপাত বা মৃদু ব্যথা অনুভব হতে পারে।',
@@ -272,9 +328,13 @@ class SnakeDatabase {
     // Checkered Keelback (Fowlea piscator) / ঢোড়া সাপ
     SnakeSpecies(
       scientificName: 'Fowlea piscator',
+      speciesEn: 'Checkered Keelback',
+      speciesBn: 'ঢোড়া সাপ',
       englishKeywords: ['checkered keelback', 'fowlea piscator', 'xenochrophis piscator', 'keelback'],
       banglaKeywords: ['ঢোড়া সাপ', 'ঢোড়া', 'জলঢোড়া', 'জলঢোড়া'],
       venomous: false,
+      dangerLevel: 'low',
+      antivenomAvailable: false,
       biteEffectsBn: 'ঢোড়া সাপ বা জলঢোড়া বিষহীন সাপ। এটি সাধারণত ডোবা, পুকুর বা জলাশয়ের আশে পাশে বাস করে ও মাছ খেয়ে জীবনধারণ করে।',
       biteEffectsEn: 'The Checkered Keelback is a non-venomous water snake commonly found in and around wetlands, feeding on fish.',
       symptomsBn: 'কামড়ে ত্বকে সামান্য আঁচড় বা লালচে ভাব দেখা দিতে পারে, যাতে সাময়িক চুলকানি বা সুড়সুড়ি হতে পারে।',
@@ -291,9 +351,13 @@ class SnakeDatabase {
     // Common Vine Snake (Ahaetulla nasuta) / লাউডগা
     SnakeSpecies(
       scientificName: 'Ahaetulla nasuta',
+      speciesEn: 'Common Vine Snake',
+      speciesBn: 'লাউডগা সাপ',
       englishKeywords: ['common vine snake', 'ahaetulla nasuta', 'vine snake', 'ahaetulla'],
       banglaKeywords: ['লাউডগা', 'লাউডগা সাপ'],
       venomous: false,
+      dangerLevel: 'low',
+      antivenomAvailable: false,
       biteEffectsBn: 'লাউডগা মৃদু বিষধর সাপ (Mildly venomous), যা সাধারণত মানুষের জন্য ক্ষতিকর বা প্রাণঘাতী নয়।',
       biteEffectsEn: 'The Vine Snake is mildly venomous (rear-fanged), but its venom is not dangerous or clinically significant to humans.',
       symptomsBn: 'হালকা চুলকানি, সামান্য ফোলাভাব এবং কামড়ের স্থানে অল্প ঝিনঝিন অনুভূতি।',
@@ -310,9 +374,13 @@ class SnakeDatabase {
     // Common Wolf Snake (Lycodon aulicus) / কালনাগিনী / ঘরগিন্নি
     SnakeSpecies(
       scientificName: 'Lycodon aulicus',
+      speciesEn: 'Common Wolf Snake',
+      speciesBn: 'ঘরগিন্নি সাপ',
       englishKeywords: ['common wolf snake', 'lycodon aulicus', 'wolf snake', 'lycodon'],
       banglaKeywords: ['কালনাগিনী', 'ঘরগিন্নি', 'নেকড়ে সাপ', 'নেকড়ে'],
       venomous: false,
+      dangerLevel: 'low',
+      antivenomAvailable: false,
       biteEffectsBn: 'কালনাগিনী বা ঘরগিন্নি সম্পূর্ণ বিষহীন সাপ। এটি আমাদের বসতবাড়ির আশেপাশে পোকামাকড় খেয়ে পরিবেশের ভারসাম্য বজায় রাখে।',
       biteEffectsEn: 'The Common Wolf Snake is completely non-venomous and frequently found near houses eating household pests.',
       symptomsBn: 'ছোট আকারের কামড়ের দাগ ও সামান্য জ্বালাপোড়া যা খুব অল্প সময়েই চলে যায়।',
@@ -326,88 +394,97 @@ class SnakeDatabase {
       emergencyBn: 'অ্যান্টি-ভেনম বা হাসপাতালের প্রয়োজন নেই। এটি সাধারণ ক্ষত পরিচর্যাতেই সেরে যাবে।',
       emergencyEn: 'No anti-venom or emergency treatment is required.',
     ),
-    // Common Trinket Snake (Coelognathus helena) / দুধরাজ সাপ
-    SnakeSpecies(
-      scientificName: 'Coelognathus helena',
-      englishKeywords: ['common trinket snake', 'coelognathus helena', 'trinket snake'],
-      banglaKeywords: ['দুধরাজ সাপ', 'দুধরাজ'],
-      venomous: false,
-      biteEffectsBn: 'দুধরাজ সম্পূর্ণ বিষহীন সাপ। এদের গায়ের সুন্দর নকশার জন্য এরা সুপরিচিত, কিন্তু এদের কোনো বিষগ্রন্হী থাকে না।',
-      biteEffectsEn: 'The Common Trinket Snake is entirely non-venomous and recognized by its beautiful body markings.',
-      symptomsBn: 'হালকা কামড় বসলে সামান্য লালচে ভাব হতে পারে, যা খুব দ্রুত নিরাময় হয়ে যায়।',
-      symptomsEn: 'Bite may cause slight redness and minor local irritation which heals rapidly.',
-      progressionBn: 'কোনো জটিলতা ঘটার সুযোগ নেই।',
-      progressionEn: 'No complications or systemic progression.',
-      fatalityBn: 'অবিষধর। এতে কোনো বিষক্রিয়ার বা মৃত্যুর ঝুঁকি নেই।',
-      fatalityEn: 'Non-venomous. No risk of envenomation or death.',
-      actionsBn: 'ক্ষতস্থান সাবান-পানি দিয়ে ধুয়ে রাখুন এবং অ্যান্টিসেপ্টিক ক্রিম লাগান।',
-      actionsEn: 'Wash the wound with soap and water, then apply local antiseptic.',
-      emergencyBn: 'কোনো প্রকার জরুরি চিকিৎসা বা অ্যান্টি-ভেনমের প্রয়োজন নেই।',
-      emergencyEn: 'No emergency medical care or anti-venom required.',
-    ),
-    // Dog-faced Water Snake (Cerberus rynchops) / হেলে সাপ
-    SnakeSpecies(
-      scientificName: 'Cerberus rynchops',
-      englishKeywords: ['dog-faced water snake', 'cerberus rynchops'],
-      banglaKeywords: ['হেলে সাপ', 'হেলে'],
-      venomous: false,
-      biteEffectsBn: 'হেলে সাপ বা কুকুর-মুখী জলসাপ সম্পূর্ণ বিষহীন সাপ। এরা উপকূলীয় মোহনা ও কাঁদাযুক্ত পানির জলাশয়ে বাস করে।',
-      biteEffectsEn: 'The Dog-faced Water Snake is entirely non-venomous, commonly inhabiting coastal mudflats and estuaries.',
-      symptomsBn: 'মৃদু আঁচড় ও কামড়ের স্থানে সামান্য অস্বস্তি হতে পারে।',
-      symptomsEn: 'Superficial scratches and minor localized discomfort.',
-      progressionBn: 'কোনো বিষ ছড়াবে না।',
-      progressionEn: 'Zero systemic progression.',
-      fatalityBn: 'অবিষধর। এতে বিষক্রিয়া বা মৃত্যুর কোনো ঝুঁকি নেই।',
-      fatalityEn: 'Non-venomous. Zero risk of envenomation.',
-      actionsBn: 'ক্ষতস্থান পরিষ্কার জল ও সাবান দিয়ে ধুয়ে মুছে নিন।',
-      actionsEn: 'Clean the bitten area with clean soap and water.',
-      emergencyBn: 'কোনো জরুরি হাসপাতালে ভর্তির প্রয়োজন নেই।',
-      emergencyEn: 'No emergency hospitalization is required.',
-    ),
   ];
 
+  /// Initialize and load offline dataset from JSON assets and local database
+  static Future<void> initialize() async {
+    if (_isInitialized && _loadedDataset.isNotEmpty) return;
+    try {
+      final String jsonString = await rootBundle.loadString('assets/data/snakes.json');
+      final List<dynamic> jsonList = json.decode(jsonString);
+      _loadedDataset = jsonList.map((e) => SnakeSpecies.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {}
+
+    // Load any dynamically saved custom snakes from device local database
+    try {
+      final customSnakesJson = await DatabaseHelper.instance.getCachedSnakes();
+      for (var rawJson in customSnakesJson) {
+        try {
+          final Map<String, dynamic> map = json.decode(rawJson);
+          final snake = SnakeSpecies.fromJson(map);
+          registerDynamicSpecies(snake, persist: false);
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    _isInitialized = true;
+  }
+
+  /// Dynamic runtime cache registration for newly discovered snakes generated by AI
+  static void registerDynamicSpecies(SnakeSpecies species, {bool persist = true}) {
+    final existingIdx = _runtimeCache.indexWhere(
+      (s) => s.scientificName.toLowerCase() == species.scientificName.toLowerCase(),
+    );
+    if (existingIdx != -1) {
+      _runtimeCache[existingIdx] = species;
+    } else {
+      _runtimeCache.add(species);
+    }
+
+    if (persist) {
+      DatabaseHelper.instance.saveCachedSnake(
+        species.scientificName,
+        json.encode(species.toJson()),
+      ).catchError((_) {});
+    }
+  }
+
+  /// Get all known species combining dynamic runtime cache, loaded dataset, and core catalog
+  static List<SnakeSpecies> getAllSpecies() {
+    final Map<String, SnakeSpecies> merged = {};
+    for (var s in _coreCatalog) {
+      merged[s.scientificName.toLowerCase()] = s;
+    }
+    for (var s in _loadedDataset) {
+      merged[s.scientificName.toLowerCase()] = s;
+    }
+    for (var s in _runtimeCache) {
+      merged[s.scientificName.toLowerCase()] = s;
+    }
+    return merged.values.toList();
+  }
+
+  /// Check venomous status with reliable herpetological database override
   static bool checkVenomous(String speciesEn, String speciesBn, bool defaultVal) {
-    final lowerEn = speciesEn.toLowerCase();
-    final lowerBn = speciesBn.toLowerCase();
-
-    // 1. First search by scientific/english keywords
-    for (var species in _speciesList) {
-      for (var kw in species.englishKeywords) {
-        if (lowerEn.contains(kw)) {
-          return species.venomous;
-        }
-      }
+    final match = getSpeciesDetails(speciesEn, speciesBn);
+    if (match != null) {
+      return match.venomous;
     }
-
-    // 2. Fallback to Bangla keywords search
-    for (var species in _speciesList) {
-      for (var kw in species.banglaKeywords) {
-        if (lowerBn.contains(kw)) {
-          return species.venomous;
-        }
-      }
-    }
-
     return defaultVal;
   }
 
+  /// Retrieve full medical and herpetological details for an identified snake
   static SnakeSpecies? getSpeciesDetails(String speciesEn, String speciesBn) {
-    final lowerEn = speciesEn.toLowerCase();
-    final lowerBn = speciesBn.toLowerCase();
+    final lowerEn = speciesEn.toLowerCase().trim();
+    final lowerBn = speciesBn.toLowerCase().trim();
+    final all = getAllSpecies();
 
-    // 1. Search by scientific/english keywords
-    for (var species in _speciesList) {
+    // 1. Exact match on scientific / english keywords
+    for (var species in all) {
+      if (species.scientificName.isNotEmpty && lowerEn.contains(species.scientificName.toLowerCase())) {
+        return species;
+      }
       for (var kw in species.englishKeywords) {
-        if (lowerEn.contains(kw)) {
+        if (kw.isNotEmpty && (lowerEn.contains(kw) || kw.contains(lowerEn))) {
           return species;
         }
       }
     }
 
-    // 2. Fallback to Bangla keywords search
-    for (var species in _speciesList) {
+    // 2. Exact match on Bangla keywords
+    for (var species in all) {
       for (var kw in species.banglaKeywords) {
-        if (lowerBn.contains(kw)) {
+        if (kw.isNotEmpty && (lowerBn.contains(kw) || kw.contains(lowerBn))) {
           return species;
         }
       }

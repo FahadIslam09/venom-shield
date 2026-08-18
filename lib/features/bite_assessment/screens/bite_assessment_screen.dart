@@ -43,7 +43,7 @@ class _BiteAssessmentScreenState extends ConsumerState<BiteAssessmentScreen> {
     final neuroSymptoms = {
       'eyelid_droop': lang.t('চোখের পাতা ঝুলে পড়া', 'Drooping eyelids'),
       'speech_difficulty': lang.t('কথা বলতে সমস্যা', 'Difficulty speaking'),
-      'breathing_difficulty': lang.t('呼吸困難 / শ্বাসকষ্ট', 'Difficulty breathing'),
+      'breathing_difficulty': lang.t('শ্বাসকষ্ট বা দম বন্ধ ভাব', 'Difficulty breathing'),
     };
 
     final timeOptions = [

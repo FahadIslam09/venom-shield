@@ -647,7 +647,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
 
   Widget _buildManualEntryHook(AppLanguage lang) {
     return GestureDetector(
-      onTap: () => context.pushReplacement('/bite-assessment'),
+      onTap: () => context.push('/triage-checklist'),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

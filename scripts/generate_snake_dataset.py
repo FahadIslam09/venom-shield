@@ -27,8 +27,8 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# Default Google AI Studio API Key provided for VenomShield
-DEFAULT_API_KEY = "YOUR_GEMINI_KEY_HERE"
+# Default Google AI Studio API Key provided for VenomShield (from environment)
+DEFAULT_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_KEY_HERE")
 
 # Models to attempt in order of preference
 GEMINI_MODELS = [

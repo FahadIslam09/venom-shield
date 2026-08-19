@@ -129,13 +129,6 @@ flutter build apk --release
 
 ---
 
-## Project Documentation
-
-For full architectural blueprints, hackathon judge defense guides, and detailed medical triage criteria, refer to the complete documentation file:
-* [`DOCUMENTATION.md`](DOCUMENTATION.md)
-
----
-
 ## License
 
 This project is developed for emergency healthcare assistance and educational research.

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -23,6 +24,42 @@ class ScanScreen extends ConsumerStatefulWidget {
 
 class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  int _flashMode = 0; // 0 = Auto, 1 = On, 2 = Off
+
+  void _toggleFlash(AppLanguage lang) {
+    setState(() {
+      _flashMode = (_flashMode + 1) % 3;
+    });
+
+    final msg = _flashMode == 1
+        ? lang.t('ফ্ল্যাশ: চালু (ON)', 'Flash: Always ON')
+        : (_flashMode == 2
+            ? lang.t('ফ্ল্যাশ: বন্ধ (OFF)', 'Flash: OFF')
+            : lang.t('ফ্ল্যাশ: স্বয়ংক্রিয় (AUTO)', 'Flash: AUTO'));
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _flashMode == 1
+                  ? Icons.flash_on
+                  : (_flashMode == 2 ? Icons.flash_off : Icons.flash_auto),
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: _flashMode == 1 ? const Color(0xFFD97706) : AppColors.primary,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -203,20 +240,27 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
       child: Stack(
         children: [
           // Image or Empty State
-          state.imagePath != null
-              ? (kIsWeb
-                  ? Image.network(state.imagePath!, fit: BoxFit.cover, width: double.infinity)
-                  : Image.file(File(state.imagePath!), fit: BoxFit.cover, width: double.infinity))
-              : _buildEmptyState(lang),
+          state.base64Image != null
+              ? Image.memory(
+                  base64Decode(state.base64Image!),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                )
+              : (state.imagePath != null
+                  ? (kIsWeb
+                      ? Image.network(state.imagePath!, fit: BoxFit.cover, width: double.infinity)
+                      : Image.file(File(state.imagePath!), fit: BoxFit.cover, width: double.infinity))
+                  : _buildEmptyState(lang)),
           // Corner Brackets (viewfinder)
-          if (state.imagePath == null) ...[
+          if (state.base64Image == null && state.imagePath == null) ...[
             _buildCorner(Alignment.topLeft, isTop: true, isLeft: true),
             _buildCorner(Alignment.topRight, isTop: true, isLeft: false),
             _buildCorner(Alignment.bottomLeft, isTop: false, isLeft: true),
             _buildCorner(Alignment.bottomRight, isTop: false, isLeft: false),
           ],
           // Metrics Overlay
-          if (state.imagePath == null) _buildMetricsOverlay(),
+          if (state.base64Image == null && state.imagePath == null) _buildMetricsOverlay(lang),
           // Error State
           if (state.errorMessage != null) _buildErrorOverlay(state, lang),
           // Validation Overlay
@@ -296,7 +340,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildMetricsOverlay() {
+  Widget _buildMetricsOverlay(AppLanguage lang) {
+    final String flashLabel = _flashMode == 1
+        ? 'Flash: ON'
+        : (_flashMode == 2 ? 'Flash: OFF' : 'Flash: Auto');
+    final IconData flashIcon = _flashMode == 1
+        ? Icons.flash_on
+        : (_flashMode == 2 ? Icons.flash_off : Icons.flash_auto);
+
     return Positioned(
       top: 16,
       left: 16,
@@ -304,20 +355,23 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildMetricPill(Icons.flare, 'ISO Auto'),
+          _buildMetricPill(flashIcon, flashLabel, isActive: _flashMode == 1),
           _buildMetricPill(Icons.hdr_auto, 'AI Active'),
         ],
       ),
     );
   }
 
-  Widget _buildMetricPill(IconData icon, String label) {
+  Widget _buildMetricPill(IconData icon, String label, {bool isActive = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.8),
+        color: isActive ? const Color(0xFFFEF3C7) : AppColors.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.outlineVariant, width: 1),
+        border: Border.all(
+          color: isActive ? const Color(0xFFD97706) : AppColors.outlineVariant, 
+          width: 1
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -328,14 +382,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary),
+          Icon(icon, size: 16, color: isActive ? const Color(0xFFD97706) : AppColors.primary),
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.onSurface,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? const Color(0xFF92400E) : AppColors.onSurface,
               letterSpacing: 0.05,
             ),
           ),
@@ -573,12 +627,64 @@ class _ScanScreenState extends ConsumerState<ScanScreen> with SingleTickerProvid
         ),
         const SizedBox(width: 24),
         // Flash Button
-        _buildSecondaryButton(
-          icon: Icons.flash_auto,
-          label: lang.t('ফ্ল্যাশ', 'Flash'),
-          onTap: () {},
-        ),
+        _buildFlashButton(lang),
       ],
+    );
+  }
+
+  Widget _buildFlashButton(AppLanguage lang) {
+    final IconData icon = _flashMode == 1
+        ? Icons.flash_on
+        : (_flashMode == 2 ? Icons.flash_off : Icons.flash_auto);
+
+    final String label = _flashMode == 1
+        ? lang.t('চালু', 'On')
+        : (_flashMode == 2 ? lang.t('বন্ধ', 'Off') : lang.t('অটো', 'Auto'));
+
+    final Color bgColor = _flashMode == 1
+        ? const Color(0xFFFEF3C7)
+        : (_flashMode == 2 ? AppColors.surfaceContainerHigh : AppColors.surface);
+
+    final Color iconColor = _flashMode == 1
+        ? const Color(0xFFD97706)
+        : (_flashMode == 2 ? AppColors.outline : AppColors.onSurfaceVariant);
+
+    return GestureDetector(
+      onTap: () => _toggleFlash(lang),
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: _flashMode == 1 ? const Color(0xFFD97706) : AppColors.outlineVariant,
+                width: _flashMode == 1 ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${lang.t('ফ্ল্যাশ', 'Flash')}: $label',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: iconColor,
+              letterSpacing: 0.08,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

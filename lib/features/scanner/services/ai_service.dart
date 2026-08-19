@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../core/constants/api_constants.dart';
 import '../models/scan_result.dart';
+import 'cloud_snake_service.dart';
 import 'snake_database.dart';
 
 class AiService {
@@ -192,33 +193,33 @@ Return ONLY raw JSON. No markdown, no code blocks, no extra text.
           if (speciesEn.isNotEmpty && speciesEn != 'Unknown Species') {
             final List<String> faBn = (jsonMap['first_aid_bn'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
             final List<String> faEn = (jsonMap['first_aid_en'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-            SnakeDatabase.registerDynamicSpecies(
-              SnakeSpecies(
-                scientificName: speciesEn,
-                speciesEn: speciesEn,
-                speciesBn: speciesBn,
-                englishKeywords: [speciesEn.toLowerCase()],
-                banglaKeywords: [speciesBn.toLowerCase()],
-                venomous: verifiedVenomous,
-                dangerLevel: jsonMap['danger_level'] as String? ?? (verifiedVenomous ? 'high' : 'low'),
-                descriptionBn: jsonMap['description_bn'] as String? ?? '',
-                descriptionEn: jsonMap['description_en'] as String? ?? '',
-                biteEffectsBn: jsonMap['description_bn'] as String? ?? '',
-                biteEffectsEn: jsonMap['description_en'] as String? ?? '',
-                symptomsBn: '',
-                symptomsEn: '',
-                progressionBn: '',
-                progressionEn: '',
-                fatalityBn: '',
-                fatalityEn: '',
-                firstAidBn: faBn,
-                firstAidEn: faEn,
-                actionsBn: '',
-                actionsEn: '',
-                emergencyBn: '',
-                emergencyEn: '',
-              ),
+            final newSpecies = SnakeSpecies(
+              scientificName: speciesEn,
+              speciesEn: speciesEn,
+              speciesBn: speciesBn,
+              englishKeywords: [speciesEn.toLowerCase()],
+              banglaKeywords: [speciesBn.toLowerCase()],
+              venomous: verifiedVenomous,
+              dangerLevel: jsonMap['danger_level'] as String? ?? (verifiedVenomous ? 'high' : 'low'),
+              descriptionBn: jsonMap['description_bn'] as String? ?? '',
+              descriptionEn: jsonMap['description_en'] as String? ?? '',
+              biteEffectsBn: jsonMap['description_bn'] as String? ?? '',
+              biteEffectsEn: jsonMap['description_en'] as String? ?? '',
+              symptomsBn: '',
+              symptomsEn: '',
+              progressionBn: '',
+              progressionEn: '',
+              fatalityBn: '',
+              fatalityEn: '',
+              firstAidBn: faBn,
+              firstAidEn: faEn,
+              actionsBn: '',
+              actionsEn: '',
+              emergencyBn: '',
+              emergencyEn: '',
             );
+            SnakeDatabase.registerDynamicSpecies(newSpecies);
+            CloudSnakeService.pushToSupabase(newSpecies);
           }
         }
         

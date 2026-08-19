@@ -166,6 +166,9 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
       },
     ];
 
+    final bool hasSelection = state.symptomAnswers.values.any((isSelected) => isSelected);
+    final int selectedCount = state.symptomAnswers.values.where((isSelected) => isSelected).length;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -307,31 +310,75 @@ class _SymptomChecklistScreenState extends ConsumerState<SymptomChecklistScreen>
                   top: BorderSide(color: AppColors.outlineVariant),
                 ),
               ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  ref.read(triageProvider.notifier).submitChecklist();
-                  context.pushReplacement('/triage-result');
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.analytics_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      lang.t('সম্পূর্ণ মূল্যায়ন ও ফলাফল দেখুন', 'Submit & View Comprehensive Evaluation'),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!hasSelection) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.info_outline, size: 16, color: AppColors.outline),
+                          const SizedBox(width: 6),
+                          Text(
+                            lang.t(
+                              'মূল্যায়নের জন্য কমপক্ষে একটি অপশন নির্বাচন করুন', 
+                              'Select at least one option to enable evaluation'
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.surfaceContainerHigh,
+                      disabledForegroundColor: AppColors.outline,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: hasSelection
+                        ? () {
+                            ref.read(triageProvider.notifier).submitChecklist();
+                            context.pushReplacement('/triage-result');
+                          }
+                        : null,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.analytics_outlined,
+                          size: 20,
+                          color: hasSelection ? Colors.white : AppColors.outline,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          hasSelection
+                              ? (lang.isBengali 
+                                  ? 'মূল্যায়ন ও ফলাফল দেখুন ($selectedCountটি নির্বাচিত)' 
+                                  : 'Submit Evaluation ($selectedCount Selected)')
+                              : lang.t('সম্পূর্ণ মূল্যায়ন ও ফলাফল দেখুন', 'Submit & View Comprehensive Evaluation'),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: hasSelection ? Colors.white : AppColors.outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

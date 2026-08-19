@@ -50,12 +50,27 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
     state = state.copyWith(isScanning: true, errorMessage: null, result: null);
 
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
+      XFile? image;
+      try {
+        image = await _picker.pickImage(
+          source: source,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 85,
+        );
+      } catch (cameraErr) {
+        // Fallback to gallery if camera hardware / browser permission fails
+        if (source == ImageSource.camera) {
+          image = await _picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 800,
+            maxHeight: 800,
+            imageQuality: 85,
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       if (image == null) {
         state = state.copyWith(isScanning: false);
@@ -75,7 +90,7 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
       if (result == null) {
         state = state.copyWith(
           isScanning: false,
-          errorMessage: 'সার্ভার সংযোগে ত্রুটি ঘটেছে। দয়া করে নিচের লক্ষণ তালিকা পূরণ করুন।',
+          errorMessage: 'সার্ভার সংযোগে ত্রুটি ঘটেছে। দয়া করে নিচের লক্ষণ ও তালিকা পূরণ করুন।',
         );
       } else {
         state = state.copyWith(
@@ -84,7 +99,6 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
         );
       }
     } catch (e) {
-      // ponytail: standard error message fallback
       state = state.copyWith(
         isScanning: false,
         errorMessage: 'ছবি প্রসেস করতে ত্রুটি হয়েছে: $e',
